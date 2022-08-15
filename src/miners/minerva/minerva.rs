@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use reqwest::multipart::Form;
 use serde_json::json;
-use tracing::warn;
+use tracing::{warn, error};
 
 use crate::Client;
 use crate::miner::{Miner, Pool};
@@ -187,6 +187,19 @@ impl Miner for Minera {
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
         unimplemented!()
+    }
+
+    async fn get_mac(&self) -> Result<String, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/index.php/app/stats", self.ip))
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let stat = resp.json::<minera::StatsResp>().await?;
+            Ok(stat.mac_addr)
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 }
 
@@ -387,5 +400,19 @@ impl Miner for Minerva {
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
         unimplemented!()
+    }
+
+    async fn get_mac(&self) -> Result<String, Error> {
+        let resp = self.client.http_client
+            .get(&format!("https://{}/api/v1/systemInfo/network", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let network = resp.json::<cgminer::NetworkResponse>().await?;
+            Ok(network.data.hardwareAddress)
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 }

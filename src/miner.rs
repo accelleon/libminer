@@ -42,4 +42,6 @@ pub trait Miner {
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error>;
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error>;
+
+    async fn get_mac(&self) -> Result<String, Error>;
 }

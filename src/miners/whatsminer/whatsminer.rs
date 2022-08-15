@@ -239,4 +239,16 @@ impl Miner for Whatsminer {
             Err(Error::Unauthorized)
         }
     }
+
+    async fn get_mac(&self) -> Result<String, Error> {
+        let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+        if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
+            // We could error or assume not hashing
+            // Err(Error::ApiCallFailed(status.msg))
+            Ok("".to_string())
+        } else {
+            let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;
+            Ok(sum.summary[0].mac.clone().unwrap_or("".to_string()))
+        }
+    }
 }

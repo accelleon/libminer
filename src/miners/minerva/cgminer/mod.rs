@@ -6,6 +6,8 @@ mod summary;
 pub use summary::*;
 mod stats;
 pub use stats::*;
+mod network;
+pub use network::*;
 
 use serde::Deserialize;
 
