@@ -18,6 +18,8 @@ pub enum Error {
     DigestAuthError(#[from] DigestAuthError),
     #[error("ToStr error")]
     ToStrError(#[from] ToStrError),
+    #[error("Failed to acquire semaphore")]
+    SemaphoreError(#[from] tokio::sync::AcquireError),
 
     // Errors from this library
     // Detection errors

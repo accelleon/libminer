@@ -13,6 +13,8 @@ use serde_json::json;
 use tracing::{debug, warn, instrument};
 pub use tokio::time::Duration;
 use lazy_regex::regex;
+use std::sync::Arc;
+use tokio::sync::Semaphore;
 
 /*
  * Cgminer socket API has a tendency to fail often but is generally universal
@@ -22,6 +24,7 @@ use lazy_regex::regex;
 pub struct ClientBuilder {
     connect_timeout: Duration,
     request_timeout: Duration,
+    max_connections: usize,
 }
 
 impl ClientBuilder {
@@ -29,6 +32,7 @@ impl ClientBuilder {
         Self {
             connect_timeout: Duration::from_secs(5),
             request_timeout: Duration::from_secs(10),
+            max_connections: 0,
         }
     }
 
@@ -46,6 +50,13 @@ impl ClientBuilder {
         self
     }
 
+    /// Set the max amount of simultaneous connections for the client
+    /// Default is 0, or unlimited
+    pub fn max_connections(mut self, max: usize) -> Self {
+        self.max_connections = max;
+        self
+    }
+
     pub fn build(self) -> Result<Client, Error> {
         let client = reqwest::ClientBuilder::new()
             .user_agent("libminer/0.1")
@@ -56,10 +67,18 @@ impl ClientBuilder {
             .danger_accept_invalid_certs(true) // Accept self-signed certs
             .cookie_store(true) // Some miners require a cookie store
             .build()?;
+        let lock = {
+            if self.max_connections > 0 {
+                Some(Arc::new(Semaphore::new(self.max_connections)))
+            } else {
+                None
+            }
+        };
         Ok(Client {
             http_client: client,
             connect_timeout: self.connect_timeout,
             request_timeout: self.request_timeout,
+            lock,
         })
     }
 }
@@ -69,6 +88,7 @@ pub struct Client {
     http_client: reqwest::Client,
     connect_timeout: Duration,
     request_timeout: Duration,
+    lock: Option<Arc<Semaphore>>,
 }
 
 impl Client {
@@ -270,11 +290,28 @@ impl Client {
     #[instrument]
     pub async fn get_miner(&self, ip: &str, port: Option<u16>) -> Result<Box<dyn Miner + Send + Sync>, Error> {
         let port = port.unwrap_or(4028);
+        let permit = {
+            if let Some(lock) = &self.lock {
+                Some(lock.clone().acquire_owned().await?)
+            } else {
+                None
+            }
+        };
         debug!("Detecting miner at {}:{}", ip, port);
-        if let Ok(miner) = self.socket_detect(ip, port).await {
-            Ok(miner)
+        let miner = {
+            if let Ok(miner) = self.socket_detect(ip, port).await {
+                Ok(miner)
+            } else {
+                self.http_detect(ip, port).await
+            }
+        }?;
+        if let Some(permit) = permit {
+            Ok(Box::new(miner::LockMiner::new_locked(
+                miner,
+                permit,
+            )) as Box<dyn Miner + Send + Sync>)
         } else {
-            self.http_detect(ip, port).await
+            Ok(miner)
         }
     }
 }
