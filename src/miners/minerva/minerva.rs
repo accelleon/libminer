@@ -84,6 +84,10 @@ impl Miner for Minera {
         }
     }
 
+    async fn get_nameplate_rate(&self) -> Result<f64, Error> {
+        unimplemented!()
+    }
+
     async fn get_temperature(&self) -> Result<f64, Error> {
         let resp = self.client.http_client
             .get(&format!("http://{}/index.php/app/stats", self.ip))
@@ -288,6 +292,10 @@ impl Miner for Minerva {
         } else {
             Err(Error::HttpRequestFailed)
         }
+    }
+
+    async fn get_nameplate_rate(&self) -> Result<f64, Error> {
+        unimplemented!()
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {

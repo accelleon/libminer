@@ -99,6 +99,26 @@ impl Miner for Antminer {
         }
     }
 
+    async fn get_nameplate_rate(&self) -> Result<f64, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+        if resp.status().is_success() {
+            let stats: cgi::StatsResponse = resp.json().await?;
+            if let Some(stat) = stats.stats.get(0) {
+                //TODO: Gotta be a way to avoid this clone
+                Ok(stat.rate_ideal / 1000.0)
+            } else {
+                //TODO: Decide to return an error or just an empty vector
+                Ok(0.0)
+            }
+        } else {
+            //println!("{:?}", resp);
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
     async fn get_temperature(&self) -> Result<f64, Error> {
         // Antminer doesn't report a single temperature,
         // instead return the average of the board sensors

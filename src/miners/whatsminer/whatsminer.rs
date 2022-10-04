@@ -133,6 +133,12 @@ impl Miner for Whatsminer {
         }
     }
 
+    async fn get_nameplate_rate(&self) -> Result<f64, Error> {
+        let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+        let hash: wmapi::SummaryResp = serde_json::from_str(&resp)?;
+        Ok(hash.summary[0].factory_ghs as f64 / 1000.0)
+    }
+
     async fn get_temperature(&self) -> Result<f64, Error> {
         let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
         let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;

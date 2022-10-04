@@ -29,6 +29,8 @@ pub trait Miner {
 
     async fn get_hashrate(&self) -> Result<f64, Error>;
 
+    async fn get_nameplate_rate(&self) -> Result<f64, Error>;
+
     async fn get_temperature(&self) -> Result<f64, Error>;
 
     async fn get_fan_speed(&self) -> Result<Vec<u32>, Error>;
@@ -85,6 +87,10 @@ impl Miner for LockMiner {
 
     async fn get_hashrate(&self) -> Result<f64, Error> {
         self.miner.get_hashrate().await
+    }
+
+    async fn get_nameplate_rate(&self) -> Result<f64, Error> {
+        self.miner.get_nameplate_rate().await
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
