@@ -15,7 +15,7 @@ pub struct Chain {
     pub temp_chip: Vec<usize>,
     pub temp_pcb: Vec<usize>,
     pub temp_pic: Vec<usize>,
-    pub hw: u8,
+    pub hw: u16,
     pub eeprom_loaded: bool,
     pub sn: String,
     pub hwp: f64,
