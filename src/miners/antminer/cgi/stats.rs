@@ -19,7 +19,7 @@ pub struct Chain {
     pub eeprom_loaded: bool,
     pub sn: String,
     pub hwp: f64,
-    pub tpl: Vec<Vec<usize>>,
+    //pub tpl: Vec<Vec<usize>>,
 }
 
 #[derive(Deserialize, Debug)]
