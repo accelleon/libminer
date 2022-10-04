@@ -106,11 +106,11 @@ impl Miner for Antminer {
             .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))
             .send_with_digest_auth(&self.username, &self.password)
             .await?;
-        debug!("get_nameplate_rate response: {:?}", resp);
         if resp.status().is_success() {
-            let stats: cgi::StatsResponse = resp.json().await?;
+            let stats = resp.json::<cgi::StatsResponse>().await;
+            debug!("stats: {:?}", stats);
+            let stats = stats?;
             if let Some(stat) = stats.stats.get(0) {
-                //TODO: Gotta be a way to avoid this clone
                 Ok(stat.rate_ideal / 1000.0)
             } else {
                 //TODO: Decide to return an error or just an empty vector
