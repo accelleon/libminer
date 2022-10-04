@@ -7,6 +7,8 @@ use crate::miners::antminer::cgi;
 use crate::error::Error;
 use crate::Client;
 
+use tracing::debug;
+
 pub struct Antminer {
     ip: String,
     port: u16,
@@ -104,6 +106,7 @@ impl Miner for Antminer {
             .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))
             .send_with_digest_auth(&self.username, &self.password)
             .await?;
+        debug!("get_nameplate_rate response: {:?}", resp);
         if resp.status().is_success() {
             let stats: cgi::StatsResponse = resp.json().await?;
             if let Some(stat) = stats.stats.get(0) {
