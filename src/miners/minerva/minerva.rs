@@ -190,7 +190,17 @@ impl Miner for Minera {
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
-        unimplemented!()
+        // /index.php/app/varLog
+        let resp = self.client.http_client
+            .get(&format!("http://{}/index.php/app/varLog", self.ip))
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let text = resp.text().await?;
+            Ok(text.lines().map(|s| s.to_string()).collect())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 
     async fn get_mac(&self) -> Result<String, Error> {
@@ -407,7 +417,17 @@ impl Miner for Minerva {
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
-        unimplemented!()
+        let resp = self.client.http_client
+            .get(&format!("https://{}/api/v1/cgminer/log", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let logs = resp.json::<cgminer::LogResp>().await?;
+            Ok(logs.data)
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 
     async fn get_mac(&self) -> Result<String, Error> {

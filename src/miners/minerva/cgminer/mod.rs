@@ -8,6 +8,8 @@ mod stats;
 pub use stats::*;
 mod network;
 pub use network::*;
+mod log;
+pub use log::*;
 
 use serde::Deserialize;
 

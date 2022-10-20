@@ -236,14 +236,22 @@ impl Miner for Antminer {
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
-        unimplemented!()
+        let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/log.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+        if resp.status().is_success() {
+            Ok(resp.text().await?.lines().map(|s| s.to_string()).collect())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 
     async fn get_mac(&self) -> Result<String, Error> {
         let resp = self.client.http_client
-        .get(&format!("http://{}/cgi-bin/get_system_info.cgi", self.ip))
-        .send_with_digest_auth(&self.username, &self.password)
-        .await?;
+            .get(&format!("http://{}/cgi-bin/get_system_info.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
         if resp.status().is_success() {
             let sys_info: cgi::SystemInfoResponse = resp.json().await?;
             Ok(sys_info.macaddr)
