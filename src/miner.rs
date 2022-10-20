@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use serde::Serialize;
-
+use lazy_regex::{Regex, Lazy};
 use crate::error::Error;
 use crate::Client;
 
@@ -12,6 +12,12 @@ pub struct Pool {
     pub username: String,
     #[serde(rename = "pass")]
     pub password: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct MinerError {
+    pub re: &'static Lazy<Regex>,
+    pub msg: &'static str,
 }
 
 #[async_trait]
@@ -46,6 +52,8 @@ pub trait Miner {
     async fn get_logs(&mut self) -> Result<Vec<String>, Error>;
 
     async fn get_mac(&self) -> Result<String, Error>;
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error>;
 }
 
 pub struct LockMiner {
@@ -123,5 +131,9 @@ impl Miner for LockMiner {
 
     async fn get_mac(&self) -> Result<String, Error> {
         self.miner.get_mac().await
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        self.miner.get_errors().await
     }
 }

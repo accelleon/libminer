@@ -215,6 +215,10 @@ impl Miner for Minera {
             Err(Error::HttpRequestFailed)
         }
     }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        unimplemented!();
+    }
 }
 
 /// 2 fan Minervas use this interface
@@ -443,4 +447,8 @@ impl Miner for Minerva {
             Err(Error::HttpRequestFailed)
         }
     }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        unimplemented!();
+    } 
 }

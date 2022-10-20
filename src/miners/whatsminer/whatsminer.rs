@@ -257,4 +257,8 @@ impl Miner for Whatsminer {
             Ok(sum.summary[0].mac.clone().unwrap_or("".to_string()))
         }
     }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        unimplemented!();
+    }
 }

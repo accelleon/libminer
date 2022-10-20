@@ -6,6 +6,7 @@ use crate::miner::{Miner, Pool};
 use crate::miners::antminer::cgi;
 use crate::error::Error;
 use crate::Client;
+use crate::miners::antminer::error::AntminerErrors;
 
 use tracing::debug;
 
@@ -258,5 +259,18 @@ impl Miner for Antminer {
         } else {
             Err(Error::HttpRequestFailed)
         }
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        let log = self.get_logs().await?;
+        let mut errors = Vec::new();
+        for line in log {
+            for err in AntminerErrors.iter() {
+                if err.re.is_match(&line) {
+                    errors.push(err.msg.to_string());
+                }
+            }
+        }
+        Ok(errors)
     }
 }
