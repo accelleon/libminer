@@ -315,14 +315,13 @@ impl Miner for Minerva {
 
     async fn get_temperature(&self) -> Result<f64, Error> {
         let resp = self.client.http_client
-            .get(&format!("https://{}/api/v1/cgminer/tempAndSpeed", self.ip))
+            .get(&format!("https://{}/api/v1/systemInfo/tempAndSpeed", self.ip))
             .bearer_auth(&self.token)
             .send()
             .await?;
         if resp.status().is_success() {
             let temp = resp.json::<cgminer::TempAndSpeedResp>().await?;
-            // Convert to C
-            Ok(temp.temperature)
+            Ok(temp.data.temperature)
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -330,13 +329,13 @@ impl Miner for Minerva {
 
     async fn get_fan_speed(&self) -> Result<Vec<u32>, Error> {
         let resp = self.client.http_client
-            .get(&format!("https://{}/api/v1/cgminer/tempAndSpeed", self.ip))
+            .get(&format!("https://{}/api/v1/systemInfo/tempAndSpeed", self.ip))
             .bearer_auth(&self.token)
             .send()
             .await?;
         if resp.status().is_success() {
             let temp = resp.json::<cgminer::TempAndSpeedResp>().await?;
-            Ok(vec![temp.fan_speed1, temp.fan_speed2])
+            Ok(vec![temp.data.fan_speed1, temp.data.fan_speed2])
         } else {
             Err(Error::HttpRequestFailed)
         }
