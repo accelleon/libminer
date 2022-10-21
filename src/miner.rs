@@ -27,7 +27,7 @@ impl MinerError {
             let mut msg = self.msg.to_string();
             for cap in caps {
                 if let Some(cap) = cap {
-                    msg = msg.replace("{}", cap.as_str());
+                    msg = msg.replacen("{}", cap.as_str(), 1);
                 }
             }
             Some(msg)
