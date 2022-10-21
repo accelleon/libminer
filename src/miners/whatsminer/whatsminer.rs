@@ -259,6 +259,6 @@ impl Miner for Whatsminer {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        unimplemented!();
+        Ok(vec![])
     }
 }

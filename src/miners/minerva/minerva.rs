@@ -217,7 +217,7 @@ impl Miner for Minera {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        unimplemented!();
+        Ok(vec![])
     }
 }
 
@@ -449,6 +449,6 @@ impl Miner for Minerva {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        unimplemented!();
+        Ok(vec![])
     } 
 }
