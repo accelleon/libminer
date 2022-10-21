@@ -15,6 +15,16 @@ pub struct SetPoolRequest <'a> {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct GetPools {
+    pub pool1url: String,
+    pub pool1user: String,
+    pub pool2url: String,
+    pub pool2user: String,
+    pub pool3url: String,
+    pub pool3user: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct PoolDesc {
     #[serde(rename = "Accepted")]
     pub accepted: usize,
@@ -91,8 +101,15 @@ pub struct PoolDesc {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct GetPoolsResp {
+pub struct GetPoolsStatsResp {
     pub code: usize,
     pub data: [PoolDesc; 3],
+    pub message: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GetPoolsResp {
+    pub code: usize,
+    pub data: GetPools,
     pub message: String,
 }

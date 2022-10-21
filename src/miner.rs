@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::Client;
 
 // We can implement serialize directly on here for antminer
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Pool {
     pub url: String,
     #[serde(rename = "user")]

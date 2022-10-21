@@ -343,20 +343,28 @@ impl Miner for Minerva {
 
     async fn get_pools(&self) -> Result<Vec<Pool>, Error> {
         let resp = self.client.http_client
-            .get(&format!("https://{}/api/v1/cgminer/pools", self.ip))
+            .get(&format!("https://{}/api/v1/cgminer/poolsInSetting", self.ip))
             .bearer_auth(&self.token)
             .send()
             .await?;
         if resp.status().is_success() {
             let pools = resp.json::<cgminer::GetPoolsResp>().await?;
             let mut ret = Vec::new();
-            for pool in pools.data {
-                ret.push(Pool {
-                    url: pool.url,
-                    username: pool.user,
-                    password: None,
-                });
-            }
+            ret.push(Pool {
+                url: pools.data.pool1url,
+                username: pools.data.pool1user,
+                password: None,
+            });
+            ret.push(Pool {
+                url: pools.data.pool2url,
+                username: pools.data.pool2user,
+                password: None,
+            });
+            ret.push(Pool {
+                url: pools.data.pool3url,
+                username: pools.data.pool3user,
+                password: None,
+            });
             Ok(ret)
         } else {
             Err(Error::HttpRequestFailed)
