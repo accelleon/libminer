@@ -263,13 +263,11 @@ impl Miner for Antminer {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        let log = self.get_logs().await?;
+        let log = self.get_logs().await?.join("\n");
         let mut errors = HashSet::new();
-        for line in log {
-            for err in AntminerErrors.iter() {
-                if err.re.is_match(&line) {
-                    errors.insert(err.msg.to_string());
-                }
+        for err in AntminerErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
             }
         }
         Ok(errors.into_iter().collect())

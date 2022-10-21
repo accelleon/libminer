@@ -4,13 +4,14 @@ use async_trait::async_trait;
 use reqwest::multipart::Form;
 use serde_json::json;
 use tracing::{warn, error};
+use std::collections::HashSet;
 
 use crate::Client;
 use crate::miner::{Miner, Pool};
 use crate::miners::{minerva, common};
 use crate::error::Error;
 use minerva::{cgminer, minera};
-
+use minerva::error::MinerVaErrors;
 /// 4 fan Minervas use this interface
 pub struct Minera {
     ip: String,
@@ -449,6 +450,13 @@ impl Miner for Minerva {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        Ok(vec![])
-    } 
+        let log = self.get_logs().await?.join("\n");
+        let mut errors = HashSet::new();
+        for err in MinerVaErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
+    }
 }

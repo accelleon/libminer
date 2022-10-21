@@ -20,6 +20,23 @@ pub struct MinerError {
     pub msg: &'static str,
 }
 
+impl MinerError {
+    pub fn get_msg(&self, line: &str) -> Option<String> {
+        if let Some(caps) = self.re.captures(line) {
+            let caps = caps.iter().skip(1);
+            let mut msg = self.msg.to_string();
+            for cap in caps {
+                if let Some(cap) = cap {
+                    msg = msg.replace("{}", cap.as_str());
+                }
+            }
+            Some(msg)
+        } else {
+            None
+        }
+    }
+}
+
 #[async_trait]
 pub trait Miner {
     fn new(client: Client, ip: String, port: u16) -> Self
