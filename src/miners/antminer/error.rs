@@ -2,7 +2,7 @@ use lazy_regex::regex;
 
 use crate::miner::MinerError;
 
-pub static AntminerErrors: [MinerError; 4] = [
+pub static AntminerErrors: [MinerError; 5] = [
     MinerError {
         re: regex!(r".+load chain ([0-9]).+\n.+EEPROM error"),
         msg: "Chain {} EEPROM error",
@@ -10,7 +10,7 @@ pub static AntminerErrors: [MinerError; 4] = [
     MinerError {
         re: regex!(r".+ERROR_POWER_LOST"),
         msg: "Power lost",
-    }
+    },
     MinerError {
         re: regex!(r".+ERROR_FAN_LOST"),
         msg: "Fan lost",

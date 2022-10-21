@@ -268,7 +268,7 @@ impl Miner for Antminer {
         for line in log {
             for err in AntminerErrors.iter() {
                 if err.re.is_match(&line) {
-                    errors.push(err.msg.to_string());
+                    errors.insert(err.msg.to_string());
                 }
             }
         }
