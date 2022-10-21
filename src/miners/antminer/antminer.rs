@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde_json::json;
+use std::collections::HashSet;
 
 use crate::util::digest_auth::WithDigestAuth;
 use crate::miner::{Miner, Pool};
@@ -263,7 +264,7 @@ impl Miner for Antminer {
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
         let log = self.get_logs().await?;
-        let mut errors = Vec::new();
+        let mut errors = HashSet::new();
         for line in log {
             for err in AntminerErrors.iter() {
                 if err.re.is_match(&line) {
@@ -271,6 +272,6 @@ impl Miner for Antminer {
                 }
             }
         }
-        Ok(errors)
+        Ok(errors.into_iter().collect())
     }
 }

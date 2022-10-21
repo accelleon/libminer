@@ -8,6 +8,10 @@ pub static AntminerErrors: [MinerError; 4] = [
         msg: "Chain {} EEPROM error",
     },
     MinerError {
+        re: regex!(r".+ERROR_POWER_LOST"),
+        msg: "Power lost",
+    }
+    MinerError {
         re: regex!(r".+ERROR_FAN_LOST"),
         msg: "Fan lost",
     },
