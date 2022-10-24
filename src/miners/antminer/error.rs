@@ -1,8 +1,8 @@
 use lazy_regex::regex;
 
-use crate::miner::MinerError;
+use crate::{miner::MinerError, Miner};
 
-pub static AntminerErrors: [MinerError; 5] = [
+pub static AntminerErrors: [MinerError; 6] = [
     // Unsure
     MinerError {
         re: regex!(r".+load chain ([0-9]).+\n.+EEPROM error"),
@@ -23,5 +23,9 @@ pub static AntminerErrors: [MinerError; 5] = [
     MinerError {
         re: regex!(r".+_read_an6_voltage"),
         msg: "Read voltage failed",
+    },
+    MinerError {
+        re: regex!(r".+Chain ([0-9]) only find ([0-9]) asic"),
+        msg: "Chain {} only find {} asic",
     },
 ];
