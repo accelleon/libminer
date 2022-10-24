@@ -12,7 +12,8 @@ use crate::miner::{Miner, Pool};
 use crate::miners::{minerva, common};
 use crate::error::Error;
 use minerva::{cgminer, minera};
-use minerva::error::MinerVaErrors;
+use minerva::error::{MinerVaErrors, MineraErrors};
+
 /// 4 fan Minervas use this interface
 pub struct Minera {
     ip: String,
@@ -235,6 +236,7 @@ impl Miner for Minera {
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
         // /index.php/app/varLog
+        // This returns everything, we're gonna want to subscript it
         let resp = self.client.http_client
             .get(&format!("http://{}/index.php/app/varLog", self.ip))
             .send()
@@ -264,7 +266,22 @@ impl Miner for Minera {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        Ok(vec![])
+        // We're going to only keep the last 300 lines
+        // as this returns logs from before jesus was born
+        let log = self.get_logs().await?
+            .iter()
+            .rev()
+            .take(300)
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        let mut errors = HashSet::new();
+        for err in MineraErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
     }
 }
 
