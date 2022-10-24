@@ -42,6 +42,7 @@ impl Whatsminer {
         // Whatsminer can return non-compliant JSON
         resp = resp.replace("inf", "\"inf\"");
         resp = resp.replace("nan", "\"nan\"");
+        resp = resp.replace(",}", "}");
         Ok(resp)
     }
 
@@ -250,14 +251,14 @@ impl Miner for Whatsminer {
     }
 
     async fn get_mac(&self) -> Result<String, Error> {
-        let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+        let resp = self.send_recv(&json!({"cmd":"get_miner_info"})).await?;
         if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
             // We could error or assume not hashing
             // Err(Error::ApiCallFailed(status.msg))
             Ok("".to_string())
         } else {
-            let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;
-            Ok(sum.summary[0].mac.clone().unwrap_or("".to_string()))
+            let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
+            Ok(resp.msg.mac.clone())
         }
     }
 
