@@ -197,7 +197,7 @@ impl Client {
                     // {"STATUS":"E","When":"0","Code":23,"Msg":"Invalid JSON","Description":"whatsminer"}
                     //TODO: Don't hardcode the status code for Invalid Command
                     #[cfg(feature = "whatsminer")]
-                    if status.status == common::StatusCode::ERROR && status.code == 14 {
+                    if status.status == common::StatusCode::ERROR && status.code == Some(14) {
                         // lowercase and regex the description for "whatsminer"
                         if let Some(desc) = status.description {
                             if desc.to_lowercase().contains("whatsminer") {
