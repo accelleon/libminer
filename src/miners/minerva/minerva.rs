@@ -5,6 +5,7 @@ use reqwest::multipart::Form;
 use serde_json::json;
 use tracing::{warn, error};
 use std::collections::HashSet;
+use scraper::{Html, Selector};
 
 use crate::Client;
 use crate::miner::{Miner, Pool};
@@ -32,7 +33,7 @@ impl Miner for Minera {
     }
 
     fn get_type(&self) -> &'static str {
-        "Minerva (Minera)"
+        "MinerVa"
     }
 
     async fn get_model(&self) -> Result<String, Error> {
@@ -129,6 +130,8 @@ impl Miner for Minera {
     }
 
     async fn get_pools(&self) -> Result<Vec<Pool>, Error> {
+        /*
+        // This implementation doesn't work when the miner is not running
         let resp = self.client.http_client
             .get(&format!("http://{}/index.php/app/stats", self.ip))
             .send()
@@ -147,6 +150,32 @@ impl Miner for Minera {
         } else {
             Err(Error::HttpRequestFailed)
         }
+        */
+        // To get pools for miners not running we need to parse raw html .-.
+        // We can look for poolSortable as the container, each pool is a new pool-group
+        let pools_selector = Selector::parse(".poolSortable").unwrap();
+        let pool_group_selector = Selector::parse(".pool-group").unwrap();
+        let pool_url_selector = Selector::parse(r#"input[name="pool_url[]"]"#).unwrap();
+        let pool_user_selector = Selector::parse(r#"input[name="pool_username[]"]"#).unwrap();
+        let pool_pass_selector = Selector::parse(r#"input[name="pool_password[]"]"#).unwrap();
+        let resp = self.client.http_client
+            .get(&format!("http://{}/index.php/app/settings", self.ip))
+            .send()
+            .await?;
+        let document = Html::parse_document(resp.text().await?.as_str());
+        let pools = document.select(&pools_selector).next().unwrap();
+        let mut pool_list = vec![];
+        for pool in pools.select(&pool_group_selector) {
+            let url = pool.select(&pool_url_selector).next().unwrap().value().attr("value").unwrap().to_string();
+            let user = pool.select(&pool_user_selector).next().unwrap().value().attr("value").unwrap().to_string();
+            let pass = pool.select(&pool_pass_selector).next().unwrap().value().attr("value").unwrap().to_string();
+            pool_list.push(Pool {
+                url,
+                username: user,
+                password: if pass.is_empty() {None} else {Some(pass)},
+            });
+        }
+        Ok(pool_list)
     }
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
@@ -259,7 +288,7 @@ impl Miner for Minerva {
     }
 
     fn get_type(&self) -> &'static str {
-        "Minerva"
+        "MinerVa"
     }
 
     async fn get_model(&self) -> Result<String, Error> {
