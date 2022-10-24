@@ -5,7 +5,7 @@ use crate::{miner::MinerError, Miner};
 pub static AntminerErrors: [MinerError; 7] = [
     // Unsure
     MinerError {
-        re: regex!(r".+load chain ([0-9]).+\n.+EEPROM error"),
+        re: regex!(r".+load chain ([0-9]).+\n.+(EEPROM error|bad_asic_crc)"),
         msg: "Chain {} EEPROM error",
     },
     MinerError {
