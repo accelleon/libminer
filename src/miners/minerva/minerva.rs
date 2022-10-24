@@ -36,10 +36,11 @@ impl Miner for Minera {
     }
 
     async fn get_model(&self) -> Result<String, Error> {
-        //TODO: Pull from web API
-        let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"devdetails"})).await?;
-        let js = serde_json::from_str::<common::DevDetailsResp>(&resp)?;
-        Ok(js.devdetails.get(0).unwrap().model.clone())
+        //The below doesn't respond when the miner is not running
+        // let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"devdetails"})).await?;
+        // let js = serde_json::from_str::<common::DevDetailsResp>(&resp)?;
+        // Ok(js.devdetails.get(0).unwrap().model.clone())
+        Ok("MV7 4Fan".to_string())
     }
 
     async fn auth(&mut self, _username: &str, password: &str) -> Result<(), Error> {
@@ -78,8 +79,12 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat: minera::StatsResp = resp.json().await?;
-            // Convert to TH/S
-            Ok((stat.totals.hashrate as f64) / 1000000000000.0)
+            if let minera::StatsResp::Running(stat) = stat {
+                // Convert to TH/S
+                Ok((stat.totals.hashrate as f64) / 1000000000000.0)
+            } else {
+                Ok(0.0)
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -96,7 +101,12 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat = resp.json::<minera::StatsResp>().await?;
-            Ok(stat.temp)
+            if let minera::StatsResp::Running(stat) = stat {
+                // Convert to TH/S
+                Ok(stat.temp)
+            } else {
+                Ok(0.0)
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -125,11 +135,15 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat = resp.json::<minera::StatsResp>().await?;
-            Ok(stat.pools.iter().map(|p| Pool {
-                url: p.url.clone(),
-                username: p.user.clone(),
-                password: if p.pass {Some("*****".to_string())} else {None},
-            }).collect())
+            if let minera::StatsResp::Running(stat) = stat {
+                Ok(stat.pools.iter().map(|p| Pool {
+                    url: p.url.clone(),
+                    username: p.user.clone(),
+                    password: if p.pass {Some("*****".to_string())} else {None},
+                }).collect())
+            } else {
+                Ok(vec![])
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -211,7 +225,10 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat = resp.json::<minera::StatsResp>().await?;
-            Ok(stat.mac_addr)
+            match stat {
+                minera::StatsResp::Running(stat) => Ok(stat.mac_addr),
+                minera::StatsResp::NotRunning(stat) => Ok(stat.mac_addr),
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }

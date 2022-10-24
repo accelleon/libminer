@@ -244,11 +244,13 @@ impl Client {
                     // 2 fan minervas have the title Minerva and are based off umi
                     debug!("Checking for custom Minerva...");
                     let re = regex!(r"Minerva(.|\n)+umi");
-                    let resp = self.http_client.get(&format!("https://{}", ip)).send().await?;
-                    let text = resp.text().await?;
-                    if re.is_match(&text) {
-                        debug!("Found Minerva (Custom Interface) at {}", ip);
-                        return Ok(Box::new(minerva::Minerva::new(self.clone(), ip.into(), port)));
+                    let resp = self.http_client.get(&format!("https://{}", ip)).send().await;
+                    if let Ok(resp) = resp {
+                        let text = resp.text().await?;
+                        if re.is_match(&text) {
+                            debug!("Found Minerva (Custom Interface) at {}", ip);
+                            return Ok(Box::new(minerva::Minerva::new(self.clone(), ip.into(), port)));
+                        }
                     }
 
                     // 4 fan minervas permit a request to /index.php/app/stats even when not logged in
