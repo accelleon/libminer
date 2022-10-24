@@ -2,7 +2,7 @@ use lazy_regex::regex;
 
 use crate::{miner::MinerError, Miner};
 
-pub static AntminerErrors: [MinerError; 6] = [
+pub static AntminerErrors: [MinerError; 7] = [
     // Unsure
     MinerError {
         re: regex!(r".+load chain ([0-9]).+\n.+EEPROM error"),
@@ -27,5 +27,9 @@ pub static AntminerErrors: [MinerError; 6] = [
     MinerError {
         re: regex!(r".+Chain ([0-9]) only find ([0-9]+) asic"),
         msg: "Chain {} only find {} asic",
+    },
+    MinerError {
+        re: regex!(r".+i2c: timeout waiting for bus ready"),
+        msg: "I2C timeout",
     },
 ];
