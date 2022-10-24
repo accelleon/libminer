@@ -164,19 +164,22 @@ impl Miner for Minera {
             .send()
             .await?;
         let document = Html::parse_document(resp.text().await?.as_str());
-        let pools = document.select(&pools_selector).next().unwrap();
-        let mut pool_list = vec![];
-        for pool in pools.select(&pool_group_selector) {
-            let url = pool.select(&pool_url_selector).next().unwrap().value().attr("value").unwrap().to_string();
-            let user = pool.select(&pool_user_selector).next().unwrap().value().attr("value").unwrap().to_string();
-            let pass = pool.select(&pool_pass_selector).next().unwrap().value().attr("value").unwrap().to_string();
-            pool_list.push(Pool {
-                url,
-                username: user,
-                password: if pass.is_empty() {None} else {Some(pass)},
-            });
+        if let Some(pools) = document.select(&pools_selector).next() {
+            let mut pool_list = vec![];
+            for pool in pools.select(&pool_group_selector) {
+                let url = pool.select(&pool_url_selector).next().unwrap().value().attr("value").unwrap().to_string();
+                let user = pool.select(&pool_user_selector).next().unwrap().value().attr("value").unwrap().to_string();
+                let pass = pool.select(&pool_pass_selector).next().unwrap().value().attr("value").unwrap().to_string();
+                pool_list.push(Pool {
+                    url,
+                    username: user,
+                    password: if pass.is_empty() {None} else {Some(pass)},
+                });
+            }
+            Ok(pool_list)
+        } else {
+            Err(Error::HttpRequestFailed)
         }
-        Ok(pool_list)
     }
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
