@@ -12,7 +12,7 @@ pub static MinerVaErrors: [MinerError; 5] = [
         msg: "Board {} ACK not found",
     },
     MinerError {
-        re: regex!(r".+voltage not up to standard"),
+        re: regex!(r".+(voltage not up to standard|电源故障，电压不达标)"),
         msg: "Voltage not up to standard",
     },
     MinerError {
