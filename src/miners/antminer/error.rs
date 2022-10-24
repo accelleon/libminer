@@ -25,7 +25,7 @@ pub static AntminerErrors: [MinerError; 6] = [
         msg: "Read voltage failed",
     },
     MinerError {
-        re: regex!(r".+Chain ([0-9]) only find ([0-9]) asic"),
+        re: regex!(r".+Chain ([0-9]) only find ([0-9]+) asic"),
         msg: "Chain {} only find {} asic",
     },
 ];
