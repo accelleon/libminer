@@ -2,7 +2,7 @@ use lazy_regex::regex;
 
 use crate::miner::MinerError;
 
-pub static MinerVaErrors: [MinerError; 5] = [
+pub static MinerVaErrors: [MinerError; 6] = [
     MinerError {
         re: regex!(r".+Error: fan ([0-9]) failed"),
         msg: "Fan {} failed",
@@ -22,5 +22,9 @@ pub static MinerVaErrors: [MinerError; 5] = [
     MinerError {
         re: regex!(r".+init chip([0-9])/([0-9])"),
         msg: "Failed to init board {} chip {}",
-    }
+    },
+    MinerError {
+        re: regex!(r".+mv64xxx_i2c_fsm: Ctlr Error"),
+        msg: "I2C controller error",
+    },
 ];
