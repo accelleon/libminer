@@ -2,7 +2,7 @@ use lazy_regex::regex;
 
 use crate::miner::MinerError;
 
-pub static AntminerErrors: [MinerError; 8] = [
+pub static AntminerErrors: [MinerError; 9] = [
     // Unsure
     MinerError {
         re: regex!(r".+load chain ([0-9]).+\n.+(EEPROM error|bad_asic_crc)"),
@@ -35,5 +35,9 @@ pub static AntminerErrors: [MinerError; 8] = [
     MinerError {
         re: regex!(r".+i2c: timeout waiting for bus ready"),
         msg: "I2C timeout",
+    },
+    MinerError {
+        re: regex!(r".+fail to read pic temp for chain ([0-9])"),
+        msg: "Chain {} read pic temp fail",
     },
 ];
