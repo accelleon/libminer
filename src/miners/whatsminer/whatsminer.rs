@@ -3,8 +3,11 @@ use serde::Deserialize;
 use serde_json::json;
 use tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 use lazy_regex::regex;
+use std::collections::HashSet;
 
 use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi};
+
+use super::error::WhatsminerErrors;
 
 
 #[derive(Debug, Deserialize)]
@@ -263,6 +266,20 @@ impl Miner for Whatsminer {
     }
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
-        Ok(vec![])
+        let resp = self.send_recv(&json!({"cmd":"get_error_code"})).await?;
+        let resp = serde_json::from_str::<wmapi::ErrorResp>(&resp)?;
+        // Our response is a hashmap of error_code : datetime
+        // I only care about the error codes, throw them into a single string to regex against
+        let log = resp.msg.error_code.keys()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        let mut errors = HashSet::new();
+        for err in WhatsminerErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
     }
 }
