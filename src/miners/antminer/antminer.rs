@@ -126,7 +126,7 @@ impl Miner for Antminer {
 
     async fn get_temperature(&self) -> Result<f64, Error> {
         // Antminer doesn't report a single temperature,
-        // instead return the average of the board sensors
+        // instead return the average of the chip sensors
         let resp = self.client.http_client
             .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))
             .send_with_digest_auth(&self.username, &self.password)
@@ -137,7 +137,7 @@ impl Miner for Antminer {
                 let mut ret = 0.0;
                 let mut ntemp = 0;
                 for chain in &stat.chain {
-                    for temp in &chain.temp_pcb {
+                    for temp in &chain.temp_chip {
                         ntemp += 1;
                         ret += *temp as f64;
                     }
