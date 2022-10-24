@@ -2,11 +2,15 @@ use lazy_regex::regex;
 
 use crate::{miner::MinerError, Miner};
 
-pub static AntminerErrors: [MinerError; 7] = [
+pub static AntminerErrors: [MinerError; 8] = [
     // Unsure
     MinerError {
         re: regex!(r".+load chain ([0-9]).+\n.+(EEPROM error|bad_asic_crc)"),
-        msg: "Chain {} EEPROM error",
+        msg: "Chain {} EEPROM CRC error",
+    },
+    MinerError {
+        re: regex!(r"Data load fail for chain ([0-9])"),
+        msg: "Chain {} load EEPROM fail",
     },
     MinerError {
         re: regex!(r".+ERROR_POWER_LOST"),
