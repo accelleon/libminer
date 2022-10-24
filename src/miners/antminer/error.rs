@@ -1,6 +1,6 @@
 use lazy_regex::regex;
 
-use crate::{miner::MinerError, Miner};
+use crate::miner::MinerError;
 
 pub static AntminerErrors: [MinerError; 8] = [
     // Unsure
