@@ -115,7 +115,7 @@ impl Miner for Minera {
         //     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Failed to get stats")))
         // }
         //TODO: I can get Fan0 Speed but not the others
-        unimplemented!()
+        Ok(vec![])
     }
 
     async fn get_pools(&self) -> Result<Vec<Pool>, Error> {
