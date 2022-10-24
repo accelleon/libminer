@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
+use lazy_regex::regex;
 
 use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi};
 
@@ -104,7 +105,9 @@ impl Miner for Whatsminer {
     async fn get_model(&self) -> Result<String, Error> {
         let resp = self.send_recv(&json!({"cmd":"devdetails"})).await?;
         let devdetails: wmapi::DevDetailsResp = serde_json::from_str(&resp)?;
-        Ok(devdetails.devdetails[0].model.clone())
+        let re = regex!("V(E|G)?([0-9]+)");
+        let model = re.replace(&devdetails.devdetails[0].model, "");
+        Ok(model.to_string())
     }
 
     async fn auth(&mut self, _: &str, password: &str) -> Result<(), Error> {
