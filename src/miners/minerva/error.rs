@@ -2,7 +2,7 @@ use lazy_regex::regex;
 
 use crate::miner::MinerError;
 
-pub static MinerVaErrors: [MinerError; 6] = [
+pub static MinerVaErrors: [MinerError; 7] = [
     MinerError {
         re: regex!(r".+Error: fan ([0-9]) failed"),
         msg: "Fan {} failed",
@@ -26,5 +26,9 @@ pub static MinerVaErrors: [MinerError; 6] = [
     MinerError {
         re: regex!(r".+mv64xxx_i2c_fsm: Ctlr Error"),
         msg: "I2C controller error",
+    },
+    MinerError {
+        re: regex!(r".+Stratum connection to pool [0-9] interrupted.+\n.+flushing server.+\n.+flush failed"),
+        msg: "Connection interrupted, failed to flush server",
     },
 ];
