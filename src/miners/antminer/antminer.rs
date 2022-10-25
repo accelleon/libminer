@@ -206,6 +206,19 @@ impl Miner for Antminer {
         }
     }
 
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/get_miner_conf.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+        if resp.status().is_success() {
+            let json = resp.json::<cgi::GetConfResponse>().await?;
+            Ok(json.bitmain_work_mode == "1")
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
         let resp = self.client.http_client
             .post(&format!("http://{}/cgi-bin/set_miner_conf.cgi", self.ip))

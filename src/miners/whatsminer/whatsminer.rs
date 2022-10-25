@@ -187,6 +187,11 @@ impl Miner for Whatsminer {
         Ok(())
     }
 
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        //TODO: look through responses to see if i can distinguish this state
+        Err(Error::NotSupported)
+    }
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
         let js = match sleep {
             true => json!({

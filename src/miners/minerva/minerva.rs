@@ -208,7 +208,12 @@ impl Miner for Minera {
         }
     }
 
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        Err(Error::NotSupported)
+    }
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
+        return Err(Error::NotSupported);
         let webresp = self.client.http_client
             .get(&format!("http://{}/index.php/app/save_settings", self.ip))
             .query(&[("save_config", "1")])
@@ -456,6 +461,24 @@ impl Miner for Minerva {
             .await?;
         if resp.status().is_success() {
             Ok(())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        let resp1 = self.client.http_client
+            .get(&format!("https://{}/api/v1/cgminer/workMode", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp1.status().is_success() {
+            let js = resp1.json::<serde_json::Value>().await?;
+            if let Some(mask) = js["data"]["mask"].as_str() {
+                Ok(mask == "0x0")
+            } else {
+                Err(Error::ExpectedReturn)
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }

@@ -62,6 +62,8 @@ pub trait Miner {
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error>;
 
+    async fn get_sleep(&self) -> Result<bool, Error>;
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error>;
 
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error>;
@@ -132,6 +134,10 @@ impl Miner for LockMiner {
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
         self.miner.set_pools(pools).await
+    }
+
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        self.miner.get_sleep().await
     }
 
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
