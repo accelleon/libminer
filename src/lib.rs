@@ -271,7 +271,7 @@ impl Client {
                         let re = regex!(r"<title>WhatsMiner");
                         if re.is_match(&resp.text().await?) {
                             debug!("Detected Whatsminer at {}:{}", ip, port);
-                            warn!("Socket API did not respond, this miner may not work.");
+                            //warn!("Socket API did not respond, this miner may not work.");
                             return Ok(Box::new(whatsminer::Whatsminer::new(self.clone(), ip.to_string(), port)));
                         }
                     }
