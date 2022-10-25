@@ -150,7 +150,7 @@ pub static WhatsminerErrors: [MinerError; 67] = [
         msg: "Control board temperature sensor error",
     },
     MinerError {
-        re: regex!(r"35[0-2]"),
+        re: regex!(r"35([0-2])"),
         msg: "Board {} overheating",
     },
     MinerError {
@@ -159,55 +159,55 @@ pub static WhatsminerErrors: [MinerError; 67] = [
     },
 
     MinerError {
-        re: regex!(r"41[0-2]"),
+        re: regex!(r"41([0-2])"),
         msg: "Board {} EEPROM detect error",
     },
     MinerError {
-        re: regex!(r"42[0-2]"),
+        re: regex!(r"42([0-2])"),
         msg: "Board {} EEPROM parse error",
     },
     MinerError {
-        re: regex!(r"43[0-2]"),
+        re: regex!(r"43([0-2])"),
         msg: "Board {} EEPROM chip bin type error",
     },
     MinerError {
-        re: regex!(r"44[0-2]"),
+        re: regex!(r"44([0-2])"),
         msg: "Board {} EEPROM chip number error",
     },
     MinerError {
-        re: regex!(r"45[0-2]"),
+        re: regex!(r"45([0-2])"),
         msg: "Board {} EEPROM transfer error",
     },
     MinerError {
-        re: regex!(r"51[0-2]"),
+        re: regex!(r"51([0-2])"),
         msg: "Board {} type error",
     },
     MinerError {
-        re: regex!(r"52[0-2]"),
+        re: regex!(r"52([0-2])"),
         msg: "Board {} bin type error",
     },
     MinerError {
-        re: regex!(r"53[0-2]"),
+        re: regex!(r"53([0-2])"),
         msg: "Board {} not found",
     },
     MinerError {
-        re: regex!(r"54[0-2]"),
+        re: regex!(r"54([0-2])"),
         msg: "Board {} read chip id error",
     },
     MinerError {
-        re: regex!(r"55[0-2]"),
+        re: regex!(r"55([0-2])"),
         msg: "Board {} bad chip",
     },
     MinerError {
-        re: regex!(r"56[0-2]"),
+        re: regex!(r"56([0-2])"),
         msg: "Board {} loss balance",
     },
     MinerError {
-        re: regex!(r"511[0-2]"),
+        re: regex!(r"511([0-2])"),
         msg: "Board {} frequency up timeout",
     },
     MinerError {
-        re: regex!(r"507[0-2]"),
+        re: regex!(r"507([0-2])"),
         msg: "Board {} water velocity abnormal",
     },
 

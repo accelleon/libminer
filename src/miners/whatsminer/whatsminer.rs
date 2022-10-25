@@ -272,6 +272,10 @@ impl Miner for Whatsminer {
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
         let resp = self.send_recv(&json!({"cmd":"get_error_code"})).await?;
+        // Whatsminer again returning invalid JSON
+        //{"error_code":["111":"2022-10-20 09:18:54","110":"2022-10-20 09:18:54","2010":"1970-01-02 08:00:04"]}
+        //TODO: it might be cheaper to regex this
+        let resp = resp.replace("[", "{").replace("]", "}");
         let resp = serde_json::from_str::<wmapi::ErrorResp>(&resp)?;
         // Our response is a hashmap of error_code : datetime
         // I only care about the error codes, throw them into a single string to regex against
