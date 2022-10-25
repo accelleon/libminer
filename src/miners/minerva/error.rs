@@ -27,7 +27,7 @@ pub static MinerVaErrors: [MinerError; 7] = [
         msg: "Unable to init power supply",
     },
     MinerError {
-        re: regex!(r".+(init chip|启动芯片)([0-9])/([0-9])"),
+        re: regex!(r".+(?:init chip|启动芯片)([0-9])/([0-9])"),
         msg: "Failed to init board {} chip {}",
     },
     MinerError {
