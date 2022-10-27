@@ -2,10 +2,22 @@ use lazy_regex::regex;
 
 use crate::miner::MinerError;
 
-pub static MineraErrors: [MinerError; 1] = [
+pub static MineraErrors: [MinerError; 4] = [
     MinerError {
         re: regex!(r"power up to.+failed read_bak"),
         msg: "PSU failed to power up",
+    },
+    MinerError {
+        re: regex!(r"ACK not found"),
+        msg: "SPI ACK not found",
+    },
+    MinerError {
+        re: regex!("low fan speed of fan ([0-9])"),
+        msg: "Fan {} speed too low",
+    },
+    MinerError {
+        re: regex!("C3012 ([0-9]) failure, disabling!"),
+        msg: "Chain {} failure",
     },
 ];
 
