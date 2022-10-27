@@ -533,7 +533,7 @@ impl Miner for Minerva {
 
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
         let status = cgminer::LedStatus {
-            status: (if blink { "1" } else { " " }).to_string(),
+            status: (if blink { "1" } else { "0" }).to_string(),
         };
         let resp = self.client.http_client
             .post(&format!("https://{}/api/v1/systemInfo/setRedLedStatus", self.ip))
