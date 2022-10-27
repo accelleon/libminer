@@ -238,8 +238,12 @@ impl Miner for Minera {
         Ok(())
     }
 
+    async fn get_blink(&self) -> Result<bool, Error> {
+        Err(Error::NotSupported)
+    }
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
-        unimplemented!()
+        Err(Error::NotSupported)
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
@@ -513,8 +517,35 @@ impl Miner for Minerva {
         }
     }
 
+    async fn get_blink(&self) -> Result<bool, Error> {
+        let resp = self.client.http_client
+            .get(&format!("https://{}/api/v1/systemInfo/redLedStatus", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let led = resp.json::<cgminer::LedResp>().await?;
+            Ok(led.data.status == "1")
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
-        unimplemented!()
+        let status = cgminer::LedStatus {
+            status: (if blink { "1" } else { " " }).to_string(),
+        };
+        let resp = self.client.http_client
+            .post(&format!("https://{}/api/v1/systemInfo/setRedLedStatus", self.ip))
+            .bearer_auth(&self.token)
+            .json(&status)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {

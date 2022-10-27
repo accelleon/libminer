@@ -207,6 +207,18 @@ impl Miner for Whatsminer {
         Ok(())
     }
 
+    async fn get_blink(&self) -> Result<bool, Error> {
+        let resp = self.send_recv(&json!({"cmd":"get_miner_info"})).await?;
+        if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
+            // We could error or assume not hashing
+            // Err(Error::ApiCallFailed(status.msg))
+            Ok(false)
+        } else {
+            let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
+            Ok(resp.msg.ledstat == "auto")
+        }
+    }
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
         let js = match blink {
             true => json!({

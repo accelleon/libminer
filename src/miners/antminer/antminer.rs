@@ -235,6 +235,19 @@ impl Miner for Antminer {
         }
     }
 
+    async fn get_blink(&self) -> Result<bool, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/get_blink_status.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+        if resp.status().is_success() {
+            let json = resp.json::<serde_json::Value>().await?;
+            Ok(json["blink"].as_bool().ok_or(Error::ExpectedReturn)?)
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
         let resp = self.client.http_client
             .post(&format!("http://{}/cgi-bin/blink.cgi", self.ip))

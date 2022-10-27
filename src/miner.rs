@@ -66,6 +66,8 @@ pub trait Miner {
 
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error>;
 
+    async fn get_blink(&self) -> Result<bool, Error>;
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error>;
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error>;
@@ -142,6 +144,10 @@ impl Miner for LockMiner {
 
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
         self.miner.set_sleep(sleep).await
+    }
+
+    async fn get_blink(&self) -> Result<bool, Error> {
+        self.miner.get_blink().await
     }
 
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
