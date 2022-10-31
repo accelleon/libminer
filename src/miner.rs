@@ -1,11 +1,10 @@
 use async_trait::async_trait;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use lazy_regex::{Regex, Lazy};
 use crate::error::Error;
 use crate::Client;
 
-// We can implement serialize directly on here for antminer
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Pool {
     pub url: String,
     #[serde(rename = "user")]
