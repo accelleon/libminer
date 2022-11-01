@@ -3,15 +3,15 @@ use serde::{Serialize, Deserialize};
 #[derive(Serialize)]
 pub struct SetPoolRequest <'a> {
     /// /api/v1/cgminer/changePool
-    pub pool0url: &'a str,
-    pub pool0user: &'a str,
-    pub pool0pwd: &'a str,
     pub pool1url: &'a str,
     pub pool1user: &'a str,
     pub pool1pwd: &'a str,
     pub pool2url: &'a str,
     pub pool2user: &'a str,
     pub pool2pwd: &'a str,
+    pub pool3url: &'a str,
+    pub pool3user: &'a str,
+    pub pool3pwd: &'a str,
 }
 
 #[derive(Deserialize, Debug)]

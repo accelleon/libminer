@@ -185,7 +185,7 @@ impl Miner for Minera {
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
         let mut form = Form::new()
             .text("save_miner_pools", "1");
-
+        
         for pool in pools {
             form = form
                 .text("pool_url[]", pool.url.clone())
@@ -196,6 +196,7 @@ impl Miner for Minera {
                     "".to_string()
                 });
         }
+
         let resp = self.client.http_client
             .post(&format!("http://{}/index.php/app/settings", self.ip))
             .multipart(form)
@@ -451,15 +452,15 @@ impl Miner for Minerva {
             .post(&format!("https://{}/api/v1/cgminer/changePool", self.ip))
             .bearer_auth(&self.token)
             .json(&cgminer::SetPoolRequest {
-                pool0url: &pools[0].url,
-                pool0user: &pools[0].username,
-                pool0pwd: if let Some(pwd) = &pools[0].password {&pwd} else {""},
-                pool1url: &pools[1].url,
-                pool1user: &pools[1].username,
-                pool1pwd: if let Some(pwd) = &pools[1].password {&pwd} else {""},
-                pool2url: &pools[2].url,
-                pool2user: &pools[2].username,
-                pool2pwd: if let Some(pwd) = &pools[2].password {&pwd} else {""},
+                pool1url: &pools[0].url,
+                pool1user: &pools[0].username,
+                pool1pwd: if let Some(pwd) = &pools[0].password {&pwd} else {""},
+                pool2url: &pools[1].url,
+                pool2user: &pools[1].username,
+                pool2pwd: if let Some(pwd) = &pools[1].password {&pwd} else {""},
+                pool3url: &pools[2].url,
+                pool3user: &pools[2].username,
+                pool3pwd: if let Some(pwd) = &pools[2].password {&pwd} else {""},
             })
             .send()
             .await?;
