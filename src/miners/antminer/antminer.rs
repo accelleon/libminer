@@ -11,6 +11,8 @@ use crate::miners::antminer::error::AntminerErrors;
 
 use tracing::debug;
 
+use super::cgi::SetConf;
+
 pub struct Antminer {
     ip: String,
     port: u16,
@@ -180,13 +182,7 @@ impl Miner for Antminer {
             .await?;
         if resp.status().is_success() {
             let json = resp.json::<cgi::GetConfResponse>().await?;
-            let pools = json.pools.into_iter().map(|pool| {
-                Pool {
-                    url: pool.url,
-                    username: pool.user,
-                    password: Some(pool.pass),
-                }
-            }).collect();
+            let pools = json.pools;
             Ok(pools)
         } else {
             Err(Error::HttpRequestFailed)
@@ -195,8 +191,20 @@ impl Miner for Antminer {
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
         let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/get_miner_conf.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(Error::HttpRequestFailed);
+        }
+
+        let mut json: SetConf = resp.json::<cgi::GetConfResponse>().await?.into();
+        json.pools = pools;
+        
+        let resp = self.client.http_client
             .post(&format!("http://{}/cgi-bin/set_miner_conf.cgi", self.ip))
-            .json(&pools)
+            .json(&json)
             .send_with_digest_auth(&self.username, &self.password)
             .await?;
         if resp.status().is_success() {

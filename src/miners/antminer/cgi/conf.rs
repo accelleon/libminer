@@ -1,11 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Debug)]
-pub struct PoolConf {
-    pub url: String,
-    pub user: String,
-    pub pass: String,
-}
+use crate::Pool;
 
 #[derive(Deserialize, Debug)]
 pub struct GetConfResponse {
@@ -36,7 +30,7 @@ pub struct GetConfResponse {
     /// "0" is normal, "1" is sleep
     #[serde(rename = "bitmain-work-mode")]
     pub bitmain_work_mode: String,
-    pub pools: [PoolConf; 3],
+    pub pools: Vec<Pool>,
 }
 
 #[derive(Serialize, Debug)]
@@ -50,4 +44,17 @@ pub struct SetConf {
     /// 0 is normal, 1 is sleep
     #[serde(rename = "miner-mode")]
     pub miner_mode: u8,
+    pub pools: Vec<Pool>,
+}
+
+impl From<GetConfResponse> for SetConf {
+    fn from(conf: GetConfResponse) -> Self {
+        SetConf {
+            bitmain_fan_ctrl: conf.bitmain_fan_ctrl,
+            bitmain_fan_pwm: conf.bitmain_fan_pwm,
+            freq_level: conf.bitmain_freq_level,
+            miner_mode: conf.bitmain_work_mode.parse().unwrap(),
+            pools: conf.pools,
+        }
+    }
 }
