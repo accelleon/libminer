@@ -215,7 +215,7 @@ impl Miner for Whatsminer {
             Ok(false)
         } else {
             let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
-            Ok(resp.msg.ledstat == "auto")
+            Ok(resp.msg.ledstat != "auto")
         }
     }
 
