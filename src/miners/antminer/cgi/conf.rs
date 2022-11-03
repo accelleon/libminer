@@ -53,7 +53,8 @@ impl From<GetConfResponse> for SetConf {
             bitmain_fan_ctrl: conf.bitmain_fan_ctrl,
             bitmain_fan_pwm: conf.bitmain_fan_pwm,
             freq_level: conf.bitmain_freq_level,
-            miner_mode: conf.bitmain_work_mode.parse().unwrap(),
+            // Antminers sometimes have this empty, default to 0 (normal)
+            miner_mode: conf.bitmain_work_mode.parse().unwrap_or(0),
             pools: conf.pools,
         }
     }
