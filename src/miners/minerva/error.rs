@@ -21,7 +21,7 @@ pub static MineraErrors: [MinerError; 4] = [
     },
 ];
 
-pub static MinerVaErrors: [MinerError; 7] = [
+pub static MinerVaErrors: [MinerError; 8] = [
     MinerError {
         re: regex!(r".+Error: fan ([0-9]) failed"),
         msg: "Fan {} failed",
@@ -50,4 +50,8 @@ pub static MinerVaErrors: [MinerError; 7] = [
         re: regex!(r".+Stratum connection to pool [0-9] interrupted.+\n.+flushing server.+\n.+flush failed"),
         msg: "Connection interrupted, failed to flush server",
     },
+    MinerError {
+        re: regex!(r".+read eeprom failed:I2C(Nix(ENXIO))"),
+        msg: "Failed to read EEPROM, device did not respond",
+    }
 ];
