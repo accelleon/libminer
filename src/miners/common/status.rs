@@ -33,10 +33,11 @@ pub enum RespCode {
 pub struct Status {
     #[serde(rename = "STATUS")]
     pub status: StatusCode,
+    // Whatsminer doesn't always return When or Code
     #[serde(rename = "When")]
-    pub when: usize,
+    pub when: Option<usize>,
     #[serde(rename = "Code")]
-    pub code: usize,
+    pub code: Option<usize>,
     #[serde(rename = "Msg")]
     pub msg: String,
     #[serde(rename = "Description")]

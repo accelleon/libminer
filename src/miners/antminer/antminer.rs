@@ -1,13 +1,17 @@
 use async_trait::async_trait;
 use serde_json::json;
+use std::collections::HashSet;
 
 use crate::util::digest_auth::WithDigestAuth;
 use crate::miner::{Miner, Pool};
 use crate::miners::antminer::cgi;
 use crate::error::Error;
 use crate::Client;
+use crate::miners::antminer::error::AntminerErrors;
 
 use tracing::debug;
+
+use super::cgi::SetConf;
 
 pub struct Antminer {
     ip: String,
@@ -124,7 +128,7 @@ impl Miner for Antminer {
 
     async fn get_temperature(&self) -> Result<f64, Error> {
         // Antminer doesn't report a single temperature,
-        // instead return the average of the board sensors
+        // instead return the average of the chip sensors
         let resp = self.client.http_client
             .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))
             .send_with_digest_auth(&self.username, &self.password)
@@ -135,7 +139,7 @@ impl Miner for Antminer {
                 let mut ret = 0.0;
                 let mut ntemp = 0;
                 for chain in &stat.chain {
-                    for temp in &chain.temp_pcb {
+                    for temp in &chain.temp_chip {
                         ntemp += 1;
                         ret += *temp as f64;
                     }
@@ -178,13 +182,7 @@ impl Miner for Antminer {
             .await?;
         if resp.status().is_success() {
             let json = resp.json::<cgi::GetConfResponse>().await?;
-            let pools = json.pools.into_iter().map(|pool| {
-                Pool {
-                    url: pool.url,
-                    username: pool.user,
-                    password: Some(pool.pass),
-                }
-            }).collect();
+            let pools = json.pools;
             Ok(pools)
         } else {
             Err(Error::HttpRequestFailed)
@@ -193,12 +191,37 @@ impl Miner for Antminer {
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
         let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/get_miner_conf.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(Error::HttpRequestFailed);
+        }
+
+        let mut json: SetConf = resp.json::<cgi::GetConfResponse>().await?.into();
+        json.pools = pools;
+        
+        let resp = self.client.http_client
             .post(&format!("http://{}/cgi-bin/set_miner_conf.cgi", self.ip))
-            .json(&pools)
+            .json(&json)
             .send_with_digest_auth(&self.username, &self.password)
             .await?;
         if resp.status().is_success() {
             Ok(())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/get_miner_conf.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+        if resp.status().is_success() {
+            let json = resp.json::<cgi::GetConfResponse>().await?;
+            Ok(json.bitmain_work_mode == "1")
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -215,6 +238,19 @@ impl Miner for Antminer {
         if resp.status().is_success() {
             //println!("{}", resp.text().await?);
             Ok(())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
+    async fn get_blink(&self) -> Result<bool, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/cgi-bin/get_blink_status.cgi", self.ip))
+            .send_with_digest_auth(&self.username, &self.password)
+            .await?;
+        if resp.status().is_success() {
+            let json = resp.json::<serde_json::Value>().await?;
+            Ok(json["blink"].as_bool().ok_or(Error::ExpectedReturn)?)
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -258,5 +294,16 @@ impl Miner for Antminer {
         } else {
             Err(Error::HttpRequestFailed)
         }
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        let log = self.get_logs().await?.join("\n");
+        let mut errors = HashSet::new();
+        for err in AntminerErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
     }
 }

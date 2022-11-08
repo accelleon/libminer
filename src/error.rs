@@ -49,4 +49,6 @@ pub enum Error {
     ApiCallFailed(String),
     #[error("Expected return")]
     ExpectedReturn,
+    #[error("Not supported")]
+    NotSupported,
 }

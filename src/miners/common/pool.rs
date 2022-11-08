@@ -22,7 +22,7 @@ pub struct PoolDesc {
     #[serde(rename = "Quota")]
     pub quota: usize,
     #[serde(rename = "Long Poll")]
-    pub long_poll: String,
+    pub long_poll: Option<String>,
     #[serde(rename = "Getworks")]
     pub getworks: usize,
     #[serde(rename = "Accepted")]
@@ -70,7 +70,7 @@ pub struct PoolDesc {
     #[serde(rename = "Has Vmask")]
     pub has_vmask: Option<bool>,
     #[serde(rename = "Has GBT")]
-    pub has_gbt: bool,
+    pub has_gbt: Option<bool>,
     #[serde(rename = "Best Share")]
     pub best_share: usize,
     #[serde(rename = "Pool Rejected%")]

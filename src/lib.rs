@@ -197,7 +197,7 @@ impl Client {
                     // {"STATUS":"E","When":"0","Code":23,"Msg":"Invalid JSON","Description":"whatsminer"}
                     //TODO: Don't hardcode the status code for Invalid Command
                     #[cfg(feature = "whatsminer")]
-                    if status.status == common::StatusCode::ERROR && status.code == 14 {
+                    if status.status == common::StatusCode::ERROR && status.code == Some(14) {
                         // lowercase and regex the description for "whatsminer"
                         if let Some(desc) = status.description {
                             if desc.to_lowercase().contains("whatsminer") {
@@ -244,11 +244,13 @@ impl Client {
                     // 2 fan minervas have the title Minerva and are based off umi
                     debug!("Checking for custom Minerva...");
                     let re = regex!(r"Minerva(.|\n)+umi");
-                    let resp = self.http_client.get(&format!("https://{}", ip)).send().await?;
-                    let text = resp.text().await?;
-                    if re.is_match(&text) {
-                        debug!("Found Minerva (Custom Interface) at {}", ip);
-                        return Ok(Box::new(minerva::Minerva::new(self.clone(), ip.into(), port)));
+                    let resp = self.http_client.get(&format!("https://{}", ip)).send().await;
+                    if let Ok(resp) = resp {
+                        let text = resp.text().await?;
+                        if re.is_match(&text) {
+                            debug!("Found Minerva (Custom Interface) at {}", ip);
+                            return Ok(Box::new(minerva::Minerva::new(self.clone(), ip.into(), port)));
+                        }
                     }
 
                     // 4 fan minervas permit a request to /index.php/app/stats even when not logged in
@@ -269,7 +271,7 @@ impl Client {
                         let re = regex!(r"<title>WhatsMiner");
                         if re.is_match(&resp.text().await?) {
                             debug!("Detected Whatsminer at {}:{}", ip, port);
-                            warn!("Socket API did not respond, this miner may not work.");
+                            //warn!("Socket API did not respond, this miner may not work.");
                             return Ok(Box::new(whatsminer::Whatsminer::new(self.clone(), ip.to_string(), port)));
                         }
                     }

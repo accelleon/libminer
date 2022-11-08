@@ -4,12 +4,15 @@ use async_trait::async_trait;
 use reqwest::multipart::Form;
 use serde_json::json;
 use tracing::{warn, error};
+use std::collections::HashSet;
+use scraper::{Html, Selector};
 
 use crate::Client;
 use crate::miner::{Miner, Pool};
 use crate::miners::{minerva, common};
 use crate::error::Error;
 use minerva::{cgminer, minera};
+use minerva::error::{MinerVaErrors, MineraErrors};
 
 /// 4 fan Minervas use this interface
 pub struct Minera {
@@ -31,14 +34,15 @@ impl Miner for Minera {
     }
 
     fn get_type(&self) -> &'static str {
-        "Minerva (Minera)"
+        "MinerVa"
     }
 
     async fn get_model(&self) -> Result<String, Error> {
-        //TODO: Pull from web API
-        let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"devdetails"})).await?;
-        let js = serde_json::from_str::<common::DevDetailsResp>(&resp)?;
-        Ok(js.devdetails.get(0).unwrap().model.clone())
+        //The below doesn't respond when the miner is not running
+        // let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"devdetails"})).await?;
+        // let js = serde_json::from_str::<common::DevDetailsResp>(&resp)?;
+        // Ok(js.devdetails.get(0).unwrap().model.clone())
+        Ok("MV7 4Fan".to_string())
     }
 
     async fn auth(&mut self, _username: &str, password: &str) -> Result<(), Error> {
@@ -77,8 +81,12 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat: minera::StatsResp = resp.json().await?;
-            // Convert to TH/S
-            Ok((stat.totals.hashrate as f64) / 1000000000000.0)
+            if let minera::StatsResp::Running(stat) = stat {
+                // Convert to TH/S
+                Ok((stat.totals.hashrate as f64) / 1000000000000.0)
+            } else {
+                Ok(0.0)
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -95,7 +103,12 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat = resp.json::<minera::StatsResp>().await?;
-            Ok(stat.temp)
+            if let minera::StatsResp::Running(stat) = stat {
+                // Convert to TH/S
+                Ok(stat.temp)
+            } else {
+                Ok(0.0)
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -114,21 +127,56 @@ impl Miner for Minera {
         //     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Failed to get stats")))
         // }
         //TODO: I can get Fan0 Speed but not the others
-        unimplemented!()
+        Ok(vec![])
     }
 
     async fn get_pools(&self) -> Result<Vec<Pool>, Error> {
+        /*
+        // This implementation doesn't work when the miner is not running
         let resp = self.client.http_client
             .get(&format!("http://{}/index.php/app/stats", self.ip))
             .send()
             .await?;
         if resp.status().is_success() {
             let stat = resp.json::<minera::StatsResp>().await?;
-            Ok(stat.pools.iter().map(|p| Pool {
-                url: p.url.clone(),
-                username: p.user.clone(),
-                password: if p.pass {Some("*****".to_string())} else {None},
-            }).collect())
+            if let minera::StatsResp::Running(stat) = stat {
+                Ok(stat.pools.iter().map(|p| Pool {
+                    url: p.url.clone(),
+                    username: p.user.clone(),
+                    password: if p.pass {Some("*****".to_string())} else {None},
+                }).collect())
+            } else {
+                Ok(vec![])
+            }
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+        */
+        // To get pools for miners not running we need to parse raw html .-.
+        // We can look for poolSortable as the container, each pool is a new pool-group
+        let pools_selector = Selector::parse(".poolSortable").unwrap();
+        let pool_group_selector = Selector::parse(".pool-group").unwrap();
+        let pool_url_selector = Selector::parse(r#"input[name="pool_url[]"]"#).unwrap();
+        let pool_user_selector = Selector::parse(r#"input[name="pool_username[]"]"#).unwrap();
+        let pool_pass_selector = Selector::parse(r#"input[name="pool_password[]"]"#).unwrap();
+        let resp = self.client.http_client
+            .get(&format!("http://{}/index.php/app/settings", self.ip))
+            .send()
+            .await?;
+        let document = Html::parse_document(resp.text().await?.as_str());
+        if let Some(pools) = document.select(&pools_selector).next() {
+            let mut pool_list = vec![];
+            for pool in pools.select(&pool_group_selector) {
+                let url = pool.select(&pool_url_selector).next().unwrap().value().attr("value").unwrap().to_string();
+                let user = pool.select(&pool_user_selector).next().unwrap().value().attr("value").unwrap().to_string();
+                let pass = pool.select(&pool_pass_selector).next().unwrap().value().attr("value").unwrap().to_string();
+                pool_list.push(Pool {
+                    url,
+                    username: user,
+                    password: if pass.is_empty() {None} else {Some(pass)},
+                });
+            }
+            Ok(pool_list)
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -137,7 +185,7 @@ impl Miner for Minera {
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error> {
         let mut form = Form::new()
             .text("save_miner_pools", "1");
-
+        
         for pool in pools {
             form = form
                 .text("pool_url[]", pool.url.clone())
@@ -148,6 +196,7 @@ impl Miner for Minera {
                     "".to_string()
                 });
         }
+
         let resp = self.client.http_client
             .post(&format!("http://{}/index.php/app/settings", self.ip))
             .multipart(form)
@@ -160,7 +209,12 @@ impl Miner for Minera {
         }
     }
 
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        Err(Error::NotSupported)
+    }
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
+        return Err(Error::NotSupported);
         let webresp = self.client.http_client
             .get(&format!("http://{}/index.php/app/save_settings", self.ip))
             .query(&[("save_config", "1")])
@@ -185,12 +239,17 @@ impl Miner for Minera {
         Ok(())
     }
 
+    async fn get_blink(&self) -> Result<bool, Error> {
+        Err(Error::NotSupported)
+    }
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
-        unimplemented!()
+        Err(Error::NotSupported)
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
         // /index.php/app/varLog
+        // This returns everything, we're gonna want to subscript it
         let resp = self.client.http_client
             .get(&format!("http://{}/index.php/app/varLog", self.ip))
             .send()
@@ -210,10 +269,32 @@ impl Miner for Minera {
             .await?;
         if resp.status().is_success() {
             let stat = resp.json::<minera::StatsResp>().await?;
-            Ok(stat.mac_addr)
+            match stat {
+                minera::StatsResp::Running(stat) => Ok(stat.mac_addr),
+                minera::StatsResp::NotRunning(stat) => Ok(stat.mac_addr),
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        // We're going to only keep the last 300 lines
+        // as this returns logs from before jesus was born
+        let log = self.get_logs().await?
+            .iter()
+            .rev()
+            .take(300)
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        let mut errors = HashSet::new();
+        for err in MineraErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
     }
 }
 
@@ -237,7 +318,7 @@ impl Miner for Minerva {
     }
 
     fn get_type(&self) -> &'static str {
-        "Minerva"
+        "MinerVa"
     }
 
     async fn get_model(&self) -> Result<String, Error> {
@@ -310,14 +391,13 @@ impl Miner for Minerva {
 
     async fn get_temperature(&self) -> Result<f64, Error> {
         let resp = self.client.http_client
-            .get(&format!("https://{}/api/v1/cgminer/tempAndSpeed", self.ip))
+            .get(&format!("https://{}/api/v1/systemInfo/tempAndSpeed", self.ip))
             .bearer_auth(&self.token)
             .send()
             .await?;
         if resp.status().is_success() {
             let temp = resp.json::<cgminer::TempAndSpeedResp>().await?;
-            // Convert to C
-            Ok(temp.temperature)
+            Ok(temp.data.temperature)
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -325,13 +405,13 @@ impl Miner for Minerva {
 
     async fn get_fan_speed(&self) -> Result<Vec<u32>, Error> {
         let resp = self.client.http_client
-            .get(&format!("https://{}/api/v1/cgminer/tempAndSpeed", self.ip))
+            .get(&format!("https://{}/api/v1/systemInfo/tempAndSpeed", self.ip))
             .bearer_auth(&self.token)
             .send()
             .await?;
         if resp.status().is_success() {
             let temp = resp.json::<cgminer::TempAndSpeedResp>().await?;
-            Ok(vec![temp.fan_speed1, temp.fan_speed2])
+            Ok(vec![temp.data.fan_speed1, temp.data.fan_speed2])
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -339,20 +419,28 @@ impl Miner for Minerva {
 
     async fn get_pools(&self) -> Result<Vec<Pool>, Error> {
         let resp = self.client.http_client
-            .get(&format!("https://{}/api/v1/cgminer/pools", self.ip))
+            .get(&format!("https://{}/api/v1/cgminer/poolsInSetting", self.ip))
             .bearer_auth(&self.token)
             .send()
             .await?;
         if resp.status().is_success() {
             let pools = resp.json::<cgminer::GetPoolsResp>().await?;
             let mut ret = Vec::new();
-            for pool in pools.data {
-                ret.push(Pool {
-                    url: pool.url,
-                    username: pool.user,
-                    password: None,
-                });
-            }
+            ret.push(Pool {
+                url: pools.data.pool1url,
+                username: pools.data.pool1user,
+                password: None,
+            });
+            ret.push(Pool {
+                url: pools.data.pool2url,
+                username: pools.data.pool2user,
+                password: None,
+            });
+            ret.push(Pool {
+                url: pools.data.pool3url,
+                username: pools.data.pool3user,
+                password: None,
+            });
             Ok(ret)
         } else {
             Err(Error::HttpRequestFailed)
@@ -364,20 +452,38 @@ impl Miner for Minerva {
             .post(&format!("https://{}/api/v1/cgminer/changePool", self.ip))
             .bearer_auth(&self.token)
             .json(&cgminer::SetPoolRequest {
-                pool0url: &pools[0].url,
-                pool0user: &pools[0].username,
-                pool0pwd: if let Some(pwd) = &pools[0].password {&pwd} else {""},
-                pool1url: &pools[1].url,
-                pool1user: &pools[1].username,
-                pool1pwd: if let Some(pwd) = &pools[1].password {&pwd} else {""},
-                pool2url: &pools[2].url,
-                pool2user: &pools[2].username,
-                pool2pwd: if let Some(pwd) = &pools[2].password {&pwd} else {""},
+                pool1url: &pools[0].url,
+                pool1user: &pools[0].username,
+                pool1pwd: if let Some(pwd) = &pools[0].password {&pwd} else {""},
+                pool2url: &pools[1].url,
+                pool2user: &pools[1].username,
+                pool2pwd: if let Some(pwd) = &pools[1].password {&pwd} else {""},
+                pool3url: &pools[2].url,
+                pool3user: &pools[2].username,
+                pool3pwd: if let Some(pwd) = &pools[2].password {&pwd} else {""},
             })
             .send()
             .await?;
         if resp.status().is_success() {
             Ok(())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        let resp1 = self.client.http_client
+            .get(&format!("https://{}/api/v1/cgminer/workMode", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp1.status().is_success() {
+            let js = resp1.json::<serde_json::Value>().await?;
+            if let Some(mask) = js["data"]["mask"].as_str() {
+                Ok(mask == "0x0")
+            } else {
+                Err(Error::ExpectedReturn)
+            }
         } else {
             Err(Error::HttpRequestFailed)
         }
@@ -412,8 +518,35 @@ impl Miner for Minerva {
         }
     }
 
+    async fn get_blink(&self) -> Result<bool, Error> {
+        let resp = self.client.http_client
+            .get(&format!("https://{}/api/v1/systemInfo/redLedStatus", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let led = resp.json::<cgminer::LedResp>().await?;
+            Ok(led.data.status == "1")
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
-        unimplemented!()
+        let status = cgminer::LedStatus {
+            status: (if blink { "1" } else { "0" }).to_string(),
+        };
+        let resp = self.client.http_client
+            .post(&format!("https://{}/api/v1/systemInfo/setRedLedStatus", self.ip))
+            .bearer_auth(&self.token)
+            .json(&status)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error> {
@@ -442,5 +575,16 @@ impl Miner for Minerva {
         } else {
             Err(Error::HttpRequestFailed)
         }
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        let log = self.get_logs().await?.join("\n");
+        let mut errors = HashSet::new();
+        for err in MinerVaErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
     }
 }

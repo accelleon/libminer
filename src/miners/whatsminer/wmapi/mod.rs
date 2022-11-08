@@ -6,3 +6,7 @@ mod token;
 pub use token::*;
 mod device;
 pub use device::*;
+mod miner_info;
+pub use miner_info::*;
+mod error_code;
+pub use error_code::*;

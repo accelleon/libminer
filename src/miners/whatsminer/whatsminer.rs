@@ -2,8 +2,12 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
+use lazy_regex::regex;
+use std::collections::HashSet;
 
 use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi};
+
+use super::error::WhatsminerErrors;
 
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +45,7 @@ impl Whatsminer {
         // Whatsminer can return non-compliant JSON
         resp = resp.replace("inf", "\"inf\"");
         resp = resp.replace("nan", "\"nan\"");
+        resp = resp.replace(",}", "}");
         Ok(resp)
     }
 
@@ -104,7 +109,9 @@ impl Miner for Whatsminer {
     async fn get_model(&self) -> Result<String, Error> {
         let resp = self.send_recv(&json!({"cmd":"devdetails"})).await?;
         let devdetails: wmapi::DevDetailsResp = serde_json::from_str(&resp)?;
-        Ok(devdetails.devdetails[0].model.clone())
+        let re = regex!("V(E|G)?([0-9]+)");
+        let model = re.replace(&devdetails.devdetails[0].model, "");
+        Ok(model.to_string())
     }
 
     async fn auth(&mut self, _: &str, password: &str) -> Result<(), Error> {
@@ -180,6 +187,11 @@ impl Miner for Whatsminer {
         Ok(())
     }
 
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        //TODO: look through responses to see if i can distinguish this state
+        Err(Error::NotSupported)
+    }
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
         let js = match sleep {
             true => json!({
@@ -193,6 +205,18 @@ impl Miner for Whatsminer {
         let resp = self.send_recv_enc(js).await?;
         println!("{}", resp);
         Ok(())
+    }
+
+    async fn get_blink(&self) -> Result<bool, Error> {
+        let resp = self.send_recv(&json!({"cmd":"get_miner_info"})).await?;
+        if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
+            // We could error or assume not hashing
+            // Err(Error::ApiCallFailed(status.msg))
+            Ok(false)
+        } else {
+            let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
+            Ok(resp.msg.ledstat != "auto")
+        }
     }
 
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
@@ -247,14 +271,36 @@ impl Miner for Whatsminer {
     }
 
     async fn get_mac(&self) -> Result<String, Error> {
-        let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+        let resp = self.send_recv(&json!({"cmd":"get_miner_info"})).await?;
         if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
             // We could error or assume not hashing
             // Err(Error::ApiCallFailed(status.msg))
             Ok("".to_string())
         } else {
-            let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;
-            Ok(sum.summary[0].mac.clone().unwrap_or("".to_string()))
+            let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
+            Ok(resp.msg.mac.clone())
         }
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        let resp = self.send_recv(&json!({"cmd":"get_error_code"})).await?;
+        // Whatsminer again returning invalid JSON
+        //{"error_code":["111":"2022-10-20 09:18:54","110":"2022-10-20 09:18:54","2010":"1970-01-02 08:00:04"]}
+        //TODO: it might be cheaper to regex this
+        let resp = resp.replace("[", "{").replace("]", "}");
+        let resp = serde_json::from_str::<wmapi::ErrorResp>(&resp)?;
+        // Our response is a hashmap of error_code : datetime
+        // I only care about the error codes, throw them into a single string to regex against
+        let log = resp.msg.error_code.keys()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        let mut errors = HashSet::new();
+        for err in WhatsminerErrors.iter() {
+            if let Some(msg) = err.get_msg(&log) {
+                errors.insert(msg);
+            }
+        }
+        Ok(errors.into_iter().collect())
     }
 }

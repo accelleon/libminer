@@ -10,6 +10,8 @@ mod network;
 pub use network::*;
 mod log;
 pub use log::*;
+mod led;
+pub use led::*;
 
 use serde::Deserialize;
 

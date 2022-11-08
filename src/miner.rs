@@ -1,17 +1,39 @@
 use async_trait::async_trait;
-use serde::Serialize;
-
+use serde::{Serialize, Deserialize};
+use lazy_regex::{Regex, Lazy};
 use crate::error::Error;
 use crate::Client;
 
-// We can implement serialize directly on here for antminer
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Pool {
     pub url: String,
     #[serde(rename = "user")]
     pub username: String,
     #[serde(rename = "pass")]
     pub password: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct MinerError {
+    pub re: &'static Lazy<Regex>,
+    pub msg: &'static str,
+}
+
+impl MinerError {
+    pub fn get_msg(&self, line: &str) -> Option<String> {
+        if let Some(caps) = self.re.captures(line) {
+            let caps = caps.iter().skip(1);
+            let mut msg = self.msg.to_string();
+            for cap in caps {
+                if let Some(cap) = cap {
+                    msg = msg.replacen("{}", cap.as_str(), 1);
+                }
+            }
+            Some(msg)
+        } else {
+            None
+        }
+    }
 }
 
 #[async_trait]
@@ -39,13 +61,19 @@ pub trait Miner {
 
     async fn set_pools(&mut self, pools: Vec<Pool>) -> Result<(), Error>;
 
+    async fn get_sleep(&self) -> Result<bool, Error>;
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error>;
+
+    async fn get_blink(&self) -> Result<bool, Error>;
 
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error>;
 
     async fn get_logs(&mut self) -> Result<Vec<String>, Error>;
 
     async fn get_mac(&self) -> Result<String, Error>;
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error>;
 }
 
 pub struct LockMiner {
@@ -109,8 +137,16 @@ impl Miner for LockMiner {
         self.miner.set_pools(pools).await
     }
 
+    async fn get_sleep(&self) -> Result<bool, Error> {
+        self.miner.get_sleep().await
+    }
+
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
         self.miner.set_sleep(sleep).await
+    }
+
+    async fn get_blink(&self) -> Result<bool, Error> {
+        self.miner.get_blink().await
     }
 
     async fn set_blink(&mut self, blink: bool) -> Result<(), Error> {
@@ -123,5 +159,9 @@ impl Miner for LockMiner {
 
     async fn get_mac(&self) -> Result<String, Error> {
         self.miner.get_mac().await
+    }
+
+    async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
+        self.miner.get_errors().await
     }
 }
