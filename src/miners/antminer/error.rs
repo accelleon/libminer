@@ -2,7 +2,7 @@ use lazy_regex::regex;
 
 use crate::miner::MinerError;
 
-pub static AntminerErrors: [MinerError; 10] = [
+pub static AntminerErrors: [MinerError; 11] = [
     // Unsure
     MinerError {
         re: regex!(r".+load chain ([0-9]).+\n.+(EEPROM error|bad_asic_crc)"),
@@ -43,5 +43,9 @@ pub static AntminerErrors: [MinerError; 10] = [
     MinerError {
         re: regex!(r".+FW type (.+), (?:.+) shows (.+)"),
         msg: "Incorrect firmware (should be {}, found {})",
+    },
+    MinerError {
+        re: regex!(r".+read temp sensor failed: chain = ([0-9])"),
+        msg: "Chain {} read temp sensor failed",
     }
 ];
