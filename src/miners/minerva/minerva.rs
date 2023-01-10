@@ -322,9 +322,10 @@ impl Miner for Minerva {
     }
 
     async fn get_model(&self) -> Result<String, Error> {
-        let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"devdetails"})).await?;
-        let js = serde_json::from_str::<common::DevDetailsResp>(&resp)?;
-        Ok(js.devdetails.get(0).unwrap().model.clone())
+        // let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"devdetails"})).await?;
+        // let js = serde_json::from_str::<common::DevDetailsResp>(&resp)?;
+        // Ok(js.devdetails.get(0).unwrap().model.clone())
+        Ok("MV7".into())
     }
 
     async fn auth(&mut self, username: &str, password: &str) -> Result<(), Error> {
