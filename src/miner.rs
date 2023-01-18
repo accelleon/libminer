@@ -13,6 +13,16 @@ pub struct Pool {
     pub password: Option<String>,
 }
 
+impl Default for Pool {
+    fn default() -> Self {
+        Self {
+            url: String::new(),
+            username: String::new(),
+            password: None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct MinerError {
     pub re: &'static Lazy<Regex>,

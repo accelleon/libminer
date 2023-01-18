@@ -10,7 +10,7 @@ use error::Error;
 use tokio::{self, net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 use reqwest;
 use serde_json::json;
-use tracing::{debug, warn, instrument};
+use tracing::{debug, instrument};
 pub use tokio::time::Duration;
 use lazy_regex::regex;
 use std::sync::Arc;
@@ -125,6 +125,24 @@ impl Client {
         }
     }
 
+    /// Send data over a websocket to a host
+    async fn send<T>(&self, ip: &str, port: u16, data: &T) -> Result<(), Error> 
+        where T: ToString
+    {
+        let mut stream = self.connect(ip, port).await?;
+        match tokio::time::timeout(
+            self.request_timeout,
+            async {
+                stream.writable().await?;
+                stream.write_all(data.to_string().as_bytes()).await?;
+                Ok(())
+            }
+        ).await {
+            Ok(result) => result,
+            Err(_) => Err(Error::Timeout),
+        }
+    }
+
     /// Attempts to perform miner detection against the cgminer socket API roughly implemented by most miners
     /// NOTES:
     /// * On Minervas using the Minera interface, the cgminer API can be deadlocked
@@ -147,6 +165,11 @@ impl Client {
                                 common::Stats::AmVersion(_) => {
                                     debug!("Found Antminer miner at {}", ip);
                                     return Ok(Box::new(antminer::Antminer::new(self.clone(), ip.into(), port)));
+                                },
+                                #[cfg(feature = "avalon")]
+                                common::Stats::AvaStats(_) => {
+                                    debug!("Found Avalon miner at {}", ip);
+                                    return Ok(Box::new(avalon::Avalon::new(self.clone(), ip.into(), port)));
                                 },
                                 #[cfg(feature = "minerva")]
                                 common::Stats::Dev(stat) => {
@@ -238,7 +261,14 @@ impl Client {
                         }
                     }
                 }
-
+                #[cfg(feature = "avalon")]
+                {
+                    let re = regex!(r"<title>Avalon Device</title>");
+                    if re.is_match(&resp.text().await?) {
+                        debug!("Found Avalon at {}", ip);
+                        return Ok(Box::new(avalon::Avalon::new(self.clone(), ip.into(), port)));
+                    }
+                }
                 #[cfg(feature = "minerva")]
                 {
                     // 2 fan minervas have the title Minerva and are based off umi

@@ -161,6 +161,15 @@ pub struct AmStats {
     pub miner_id: String,
 }
 
+/// Avalon stats section
+/// wtf Avalon?
+#[derive(Deserialize, Debug)]
+pub struct AvaStats {
+    #[serde(flatten)]
+    pub shared: StatsShared,
+    #[serde(rename = "MM ID0")]
+    pub mm_id0: String,
+}
 
 /// Enum of a variety of stat sections that can be returned
 /// from {"command": "stats"}
@@ -168,6 +177,7 @@ pub struct AmStats {
 #[serde(untagged)]
 pub enum Stats {
     Pool(PoolStats), // Ensure PoolStats is attempted first
+    AvaStats(AvaStats),
     Dev(DevStats),
     AmVersion(AmVersion),
     AmStats(AmStats),
