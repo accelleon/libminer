@@ -4,6 +4,7 @@ use std::io::Error as IoError;
 use serde_json::Error as JsonError;
 use digest_auth::Error as DigestAuthError;
 use reqwest::header::ToStrError;
+use crate::miners::avalon::DeError as AvalonDeError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -20,6 +21,10 @@ pub enum Error {
     ToStrError(#[from] ToStrError),
     #[error("Failed to acquire semaphore")]
     SemaphoreError(#[from] tokio::sync::AcquireError),
+
+    #[cfg(feature = "avalon")]
+    #[error("Avalon deserializer error")]
+    AvalonDeserializerError(#[from] AvalonDeError),
 
     // Errors from this library
     // Detection errors
@@ -51,4 +56,6 @@ pub enum Error {
     ExpectedReturn,
     #[error("Not supported")]
     NotSupported,
+    #[error("Invalid response")]
+    InvalidResponse,
 }
