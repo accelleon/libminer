@@ -128,6 +128,11 @@ impl Miner for Antminer {
         }
     }
 
+    async fn get_efficiency(&self) -> Result<f64, Error> {
+        let model = self.get_model().await?;
+        Ok(*POWER_MAP.get(model.as_str()).ok_or(Error::UnknownModel(model))?)
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
         let resp = self.client.http_client
             .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))

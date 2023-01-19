@@ -129,6 +129,10 @@ impl Miner for Minera {
         Ok(self.get_hashrate().await? * 35.0)
     }
 
+    async fn get_efficiency(&self) -> Result<f64, Error> {
+        Ok(35.0)
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
         // Minerva doesn't report a nameplate rate, so we have to guess
         // There are 3 models with hashrates varying from 75 to 105 TH/s
@@ -454,6 +458,10 @@ impl Miner for Minerva {
         // There are 3 models with efficiencies ranging from 31 - 39 J/TH
         // Assume the middle of the road 35 J/TH
         Ok(self.get_hashrate().await? * 35.0)
+    }
+
+    async fn get_efficiency(&self) -> Result<f64, Error> {
+        Ok(35.0)
     }
 
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {

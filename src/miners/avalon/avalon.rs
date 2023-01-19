@@ -74,6 +74,13 @@ impl Miner for Avalon {
         Ok(psinfo.power as f64)
     }
 
+    async fn get_efficiency(&self) -> Result<f64, Error> {
+        let cmd = r#"{"command":"estats"}"#;
+        let resp = self.client.send_recv(&self.ip, self.port, &cmd).await?;
+        let estats = cgminer::EStats::try_from(&serde_json::from_str::<cgminer::StatsResp>(&resp)?)?;
+        Ok(estats.ps.power as f64 / (estats.ghs_mm / 1000.0))
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
         let cmd = r#"{"command":"version"}"#;
         let resp = self.client.send_recv(&self.ip, self.port, &cmd).await?;

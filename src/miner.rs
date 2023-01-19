@@ -63,6 +63,8 @@ pub trait Miner {
 
     async fn get_power(&self) -> Result<f64, Error>;
 
+    async fn get_efficiency(&self) -> Result<f64, Error>;
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error>;
 
     async fn get_temperature(&self) -> Result<f64, Error>;
@@ -131,6 +133,10 @@ impl Miner for LockMiner {
 
     async fn get_power(&self) -> Result<f64, Error> {
         self.miner.get_power().await
+    }
+
+    async fn get_efficiency(&self) -> Result<f64, Error> {
+        self.miner.get_efficiency().await
     }
 
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {

@@ -161,6 +161,18 @@ impl Miner for Whatsminer {
         Ok(sum.summary[0].power as f64)
     }
 
+    async fn get_efficiency(&self) -> Result<f64, Error> {
+        let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+        let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;
+        if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
+            // If we're not hashing we can't calculate efficiency
+            Ok(f64::INFINITY)
+        } else {
+            let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;
+            Ok(sum.summary[0].power as f64 / (sum.summary[0].hs_rt / 1000000.0))
+        }
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
         let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
         let hash: wmapi::SummaryResp = serde_json::from_str(&resp)?;
