@@ -12,6 +12,8 @@ mod log;
 pub use log::*;
 mod led;
 pub use led::*;
+mod hashboards;
+pub use hashboards::*;
 
 use serde::Deserialize;
 

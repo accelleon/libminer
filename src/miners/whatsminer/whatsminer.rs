@@ -155,6 +155,12 @@ impl Miner for Whatsminer {
         }
     }
 
+    async fn get_power(&self) -> Result<f64, Error> {
+        let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+        let sum: wmapi::SummaryResp = serde_json::from_str(&resp)?;
+        Ok(sum.summary[0].power as f64)
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
         let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
         let hash: wmapi::SummaryResp = serde_json::from_str(&resp)?;

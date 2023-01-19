@@ -22,6 +22,36 @@ pub struct Minera {
     client: Client,
 }
 
+impl Minera {
+    /// Returns the number of hashboards detected and the number online
+    async fn get_board_count(&self) -> Result<u8, Error> {
+        let resp = self.client.http_client
+            .get(&format!("http://{}/index.php/app/stats", self.ip))
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let stat: minera::StatsResp = resp.json().await?;
+            if let minera::StatsResp::Running(stat) = stat {
+                if stat.devices.board_4.is_some() {
+                    Ok(4)
+                } else if stat.devices.board_3.is_some() {
+                    Ok(3)
+                } else if stat.devices.board_2.is_some() {
+                    Ok(2)
+                } else if stat.devices.board_1.is_some() {
+                    Ok(1)
+                } else {
+                    Ok(0)
+                }
+            } else {
+                Err(Error::InvalidResponse)
+            }
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+}
+
 #[async_trait]
 impl Miner for Minera {
     fn new(client: Client, ip: String, port: u16) -> Self {
@@ -92,8 +122,23 @@ impl Miner for Minera {
         }
     }
 
+    async fn get_power(&self) -> Result<f64, Error> {
+        // Guess at power consumption
+        // There are 3 models with efficiencies ranging from 31 - 39 J/TH
+        // Assume the middle of the road 35 J/TH
+        Ok(self.get_hashrate().await? * 35.0)
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
-        unimplemented!()
+        // Minerva doesn't report a nameplate rate, so we have to guess
+        // There are 3 models with hashrates varying from 75 to 105 TH/s
+        // Assume the middle of the road 90 TH/s
+        // Most models are 3 board models, so assume 90/3 = 30 TH/s per board
+        // Unless we detect 4 boards in which case assume 90/4 = 22.5 TH/s per board
+
+        // Edge case: This will be incorrect for 4 board models with at least 1 board disconnected
+        let boards = self.get_board_count().await?;
+        Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
@@ -306,6 +351,24 @@ pub struct Minerva {
     token: String,
 }
 
+impl Minerva {
+    /// Returns the number of hashboards detected
+    async fn get_board_count(&self) -> Result<u8, Error> {
+        let resp = self.client.http_client
+            .get(&format!("https://{}/api/v1/systemInfo/hashBoards", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let resp = resp.json::<cgminer::HashBoardsResp>().await?;
+            let boards = resp.data.ok_or(Error::ApiCallFailed(resp.message))?;
+            Ok(boards.len() as u8)
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
+    }
+}
+
 #[async_trait]
 impl Miner for Minerva {
     fn new(client: Client, ip: String, port: u16) -> Self {
@@ -386,8 +449,23 @@ impl Miner for Minerva {
         }
     }
 
+    async fn get_power(&self) -> Result<f64, Error> {
+        // Guess at power consumption
+        // There are 3 models with efficiencies ranging from 31 - 39 J/TH
+        // Assume the middle of the road 35 J/TH
+        Ok(self.get_hashrate().await? * 35.0)
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
-        unimplemented!()
+        // Minerva doesn't report a nameplate rate, so we have to guess
+        // There are 3 models with hashrates varying from 75 to 105 TH/s
+        // Assume the middle of the road 90 TH/s
+        // Most models are 3 board models, so assume 90/3 = 30 TH/s per board
+        // Unless we detect 4 boards in which case assume 90/4 = 22.5 TH/s per board
+
+        // Edge case: This will be incorrect for 4 board models with at least 1 board disconnected
+        let boards = self.get_board_count().await?;
+        Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
