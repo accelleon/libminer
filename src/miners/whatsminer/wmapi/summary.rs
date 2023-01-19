@@ -109,7 +109,7 @@ pub struct Summary {
     #[serde(rename = "Target MHS")]
     pub target_mhs: usize,
     #[serde(rename = "Env Temp")]
-    pub env_temp: f64,
+    pub env_temp: Option<f64>,
     #[serde(rename = "Power Mode")]
     pub power_mode: String,
     #[serde(rename = "Firmware Version")]
@@ -127,7 +127,7 @@ pub struct Summary {
     #[serde(rename = "Chip Temp Avg")]
     pub chip_temp_avg: f64,
     #[serde(rename = "Debug")]
-    pub debug: String,
+    pub debug: Option<String>,
     #[serde(rename = "Btminer Fast Boot")]
     pub fast_boot: Option<String>,
 }

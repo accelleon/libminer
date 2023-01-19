@@ -4,10 +4,9 @@ use serde_json::json;
 use tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 use lazy_regex::regex;
 use std::collections::HashSet;
-
 use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi};
 
-use super::error::WhatsminerErrors;
+use super::{error::WhatsminerErrors, wmapi::StatusCode};
 
 
 #[derive(Debug, Deserialize)]
@@ -107,17 +106,33 @@ impl Miner for Whatsminer {
     }
 
     async fn get_model(&self) -> Result<String, Error> {
-        let resp = self.send_recv(&json!({"cmd":"devdetails"})).await?;
-        let devdetails: wmapi::DevDetailsResp = serde_json::from_str(&resp)?;
-        let re = regex!("V(E|G)?([0-9]+)");
-        let model = re.replace(&devdetails.devdetails[0].model, "");
+        let resp = self.client.http_client
+            .get(format!("https://{}/cgi-bin/luci/admin/status/overview", self.ip))
+            .send()
+            .await?
+            .text()
+            .await?;
+        let modelre = regex!(r#"<td.+>Model</td>\s*<td>WhatsMiner ([a-zA-Z0-9]+)(?:_V.+)?</td>"#);
+        let model = modelre.captures(&resp)
+            .ok_or(Error::ExpectedReturn)?
+            .get(1)
+            .ok_or(Error::ExpectedReturn)?
+            .as_str();
         Ok(model.to_string())
     }
 
-    async fn auth(&mut self, _: &str, password: &str) -> Result<(), Error> {
+    async fn auth(&mut self, username: &str, password: &str) -> Result<(), Error> {
         self.password = Some(password.to_string());
-        self.refresh_token().await
-        //TODO: Test authentication
+        let r = self.client.http_client
+            .post(format!("https://{}/cgi-bin/luci", self.ip))
+            .form(&[("luci_username", username), ("luci_password", password)])
+            .send()
+            .await?;
+        if r.status() != 200 {
+            return Err(Error::Unauthorized);
+        }
+        self.refresh_token().await?;
+        Ok(())
     }
 
     async fn reboot(&mut self) -> Result<(), Error> {
@@ -188,8 +203,20 @@ impl Miner for Whatsminer {
     }
 
     async fn get_sleep(&self) -> Result<bool, Error> {
-        //TODO: look through responses to see if i can distinguish this state
-        Err(Error::NotSupported)
+        // This doesn't work for miners running cgminer
+        // let resp = self.send_recv(&json!({"cmd":"status"})).await?;
+        // let btstatus: wmapi::BtStatusResp = serde_json::from_str(&resp)?;
+        // Ok(btstatus.msg.btmineroff)
+
+        // Scrape the web API yet again
+        let r = self.client.http_client
+            .get(&format!("https://{}/cgi-bin/luci/admin/status/processes", self.ip))
+            .send()
+            .await?
+            .text()
+            .await?;
+        let re = regex!(r#".COMMAND" value="(cg|bt)miner" />"#);
+        Ok(!re.is_match(&r))
     }
 
     async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
@@ -203,8 +230,12 @@ impl Miner for Whatsminer {
             }),
         };
         let resp = self.send_recv_enc(js).await?;
-        println!("{}", resp);
-        Ok(())
+        let stat = serde_json::from_str::<wmapi::Status>(&resp)?;
+        if stat.status == StatusCode::SUCC {
+            Ok(())
+        } else {
+            Err(Error::ApiCallFailed(stat.msg))
+        }
     }
 
     async fn get_blink(&self) -> Result<bool, Error> {
@@ -272,10 +303,11 @@ impl Miner for Whatsminer {
 
     async fn get_mac(&self) -> Result<String, Error> {
         let resp = self.send_recv(&json!({"cmd":"get_miner_info"})).await?;
-        if let Ok(status) = serde_json::from_str::<wmapi::Status>(&resp) {
-            // We could error or assume not hashing
-            // Err(Error::ApiCallFailed(status.msg))
-            Ok("".to_string())
+        if let Ok(_) = serde_json::from_str::<wmapi::Status>(&resp) {
+            // Older API version
+            let resp = self.send_recv(&json!({"cmd":"summary"})).await?;
+            let resp: wmapi::SummaryResp = serde_json::from_str(&resp)?;
+            resp.summary[0].mac.clone().ok_or(Error::ApiCallFailed("Failed to get MAC".to_string()))
         } else {
             let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
             Ok(resp.msg.mac.clone())
