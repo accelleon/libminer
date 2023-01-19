@@ -21,11 +21,12 @@ sha2 = "0.9"
 lazy-regex = "2.3"
 base64 = "0.13"
 scraper = "0.13"
+phf = { version="0", features=["macros"], optional=true }
 
 [features]
 vendored-openssl = ["openssl/vendored"]
 minerva = []
-antminer = []
+antminer = ["dep:phf"]
 whatsminer = []
 avalon = []
 all = ["minerva", "antminer", "whatsminer", "avalon"]

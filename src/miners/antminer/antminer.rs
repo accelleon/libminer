@@ -1,6 +1,10 @@
 use async_trait::async_trait;
 use serde_json::json;
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    cell::Cell,
+};
+use phf::phf_map;
 
 use crate::util::digest_auth::WithDigestAuth;
 use crate::miner::{Miner, Pool};
@@ -9,16 +13,26 @@ use crate::error::Error;
 use crate::Client;
 use crate::miners::antminer::error::AntminerErrors;
 
-use tracing::debug;
-
 use super::cgi::SetConf;
+
+/// Antminer models and their rated watt per TH
+/// If more than 1 variant exists, this will be an average of all variants
+/// Antminer rates these @25C
+static POWER_MAP: phf::Map<&'static str, f64> = phf_map! {
+    "t19" => 37.5,
+    "s19" => 34.7,
+    "s19j" => 34.5,
+    "s19a" => 34.5,
+    "s19pro" => 30.0,
+    "s19jpro" => 29.5,
+    "s19apro" => 29.5,
+};
 
 pub struct Antminer {
     ip: String,
     port: u16,
     username: String,
     password: String,
-    model: String,
     client: Client,
 }
 
@@ -30,7 +44,6 @@ impl Miner for Antminer {
             port,
             username: "".to_string(),
             password: "".to_string(),
-            model: "".to_string(),
             client,
         }
     }
@@ -105,6 +118,16 @@ impl Miner for Antminer {
         }
     }
 
+    async fn get_power(&self) -> Result<f64, Error> {
+        match self.get_hashrate().await {
+            Ok(hashrate) => {
+                let model = self.get_model().await?;
+                Ok(hashrate * POWER_MAP.get(model.as_str()).ok_or(Error::UnknownModel(model))?)
+            },
+            Err(e) => Err(e),
+        }
+    }
+
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
         let resp = self.client.http_client
             .get(&format!("http://{}/cgi-bin/stats.cgi", self.ip))
@@ -112,7 +135,6 @@ impl Miner for Antminer {
             .await?;
         if resp.status().is_success() {
             let stats = resp.json::<cgi::StatsResponse>().await;
-            debug!("stats: {:?}", stats);
             let stats = stats?;
             if let Some(stat) = stats.stats.get(0) {
                 Ok(stat.rate_ideal / 1000.0)

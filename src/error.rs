@@ -58,4 +58,6 @@ pub enum Error {
     NotSupported,
     #[error("Invalid response")]
     InvalidResponse,
+    #[error("Unknown model {0}")]
+    UnknownModel(String),
 }
