@@ -105,7 +105,7 @@ impl Client {
 
     /// Connect to a host and send data return data as String, close connection after request
     async fn send_recv<T>(&self, ip: &str, port: u16, data: &T) -> Result<String, Error> 
-        where T: ToString
+        where T: ToString + ?Sized
     {
         let mut stream = self.connect(ip, port).await?;
         match tokio::time::timeout(

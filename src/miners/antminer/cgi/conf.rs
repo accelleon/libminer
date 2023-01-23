@@ -47,15 +47,15 @@ pub struct SetConf {
     pub pools: Vec<Pool>,
 }
 
-impl From<GetConfResponse> for SetConf {
-    fn from(conf: GetConfResponse) -> Self {
+impl From<&GetConfResponse> for SetConf {
+    fn from(conf: &GetConfResponse) -> Self {
         SetConf {
             bitmain_fan_ctrl: conf.bitmain_fan_ctrl,
-            bitmain_fan_pwm: conf.bitmain_fan_pwm,
-            freq_level: conf.bitmain_freq_level,
+            bitmain_fan_pwm: conf.bitmain_fan_pwm.clone(),
+            freq_level: conf.bitmain_freq_level.clone(),
             // Antminers sometimes have this empty, default to 0 (normal)
             miner_mode: conf.bitmain_work_mode.parse().unwrap_or(0),
-            pools: conf.pools,
+            pools: conf.pools.clone(),
         }
     }
 }

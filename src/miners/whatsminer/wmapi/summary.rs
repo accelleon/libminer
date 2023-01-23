@@ -137,5 +137,5 @@ pub struct SummaryResp {
     #[serde(rename = "STATUS")]
     pub status: [Status; 1],
     #[serde(rename = "SUMMARY")]
-    pub summary: [Summary; 1],
+    pub summary: Vec<Summary>,
 }

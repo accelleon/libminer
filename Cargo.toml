@@ -27,6 +27,6 @@ phf = { version="0", features=["macros"], optional=true }
 vendored-openssl = ["openssl/vendored"]
 minerva = []
 antminer = ["dep:phf"]
-whatsminer = []
-avalon = []
+whatsminer = ["dep:phf"]
+avalon = ["dep:phf"]
 all = ["minerva", "antminer", "whatsminer", "avalon"]

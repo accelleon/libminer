@@ -6,48 +6,62 @@ use serde_json::json;
 use tracing::{warn, error};
 use std::collections::HashSet;
 use scraper::{Html, Selector};
-
+use tokio::sync::{Mutex, MutexGuard};
 use crate::Client;
 use crate::miner::{Miner, Pool};
-use crate::miners::{minerva, common};
 use crate::error::Error;
-use minerva::{cgminer, minera};
-use minerva::error::{MinerVaErrors, MineraErrors};
+use crate::miners::minerva::{cgminer, minera};
+use crate::miners::minerva::error::{MinerVaErrors, MineraErrors};
 
 /// 4 fan Minervas use this interface
 pub struct Minera {
     ip: String,
     port: u16,
-    model: Option<String>,
     client: Client,
+
+    stats: Mutex<Option<minera::StatsResp>>,
 }
 
 impl Minera {
+    async fn get_stats(&self) -> Result<MutexGuard<Option<minera::StatsResp>>, Error> {
+        let mut stats = self.stats.lock().await;
+        if stats.is_none() {
+            let resp = self.client.http_client
+                .get(&format!("http://{}/index.php/app/stats", self.ip))
+                .send()
+                .await?;
+            if resp.status().is_success() {
+                let stat: minera::StatsResp = resp.json().await?;
+                *stats = Some(stat);
+            } else {
+                return Err(Error::HttpRequestFailed);
+            }
+        }
+        Ok(stats)
+    }
+
+    async fn invalidate_stats(&self) {
+        let _ = self.stats.lock().await.take();
+    }
+
     /// Returns the number of hashboards detected and the number online
     async fn get_board_count(&self) -> Result<u8, Error> {
-        let resp = self.client.http_client
-            .get(&format!("http://{}/index.php/app/stats", self.ip))
-            .send()
-            .await?;
-        if resp.status().is_success() {
-            let stat: minera::StatsResp = resp.json().await?;
-            if let minera::StatsResp::Running(stat) = stat {
-                if stat.devices.board_4.is_some() {
-                    Ok(4)
-                } else if stat.devices.board_3.is_some() {
-                    Ok(3)
-                } else if stat.devices.board_2.is_some() {
-                    Ok(2)
-                } else if stat.devices.board_1.is_some() {
-                    Ok(1)
-                } else {
-                    Ok(0)
-                }
+        let stat = self.get_stats().await?;
+        let stat = stat.as_ref().unwrap();
+        if let minera::StatsResp::Running(stat) = stat {
+            if stat.devices.board_4.is_some() {
+                Ok(4)
+            } else if stat.devices.board_3.is_some() {
+                Ok(3)
+            } else if stat.devices.board_2.is_some() {
+                Ok(2)
+            } else if stat.devices.board_1.is_some() {
+                Ok(1)
             } else {
-                Err(Error::InvalidResponse)
+                Ok(0)
             }
         } else {
-            Err(Error::HttpRequestFailed)
+            Err(Error::InvalidResponse)
         }
     }
 }
@@ -58,8 +72,8 @@ impl Miner for Minera {
         Minera {
             ip,
             port,
-            model: None,
             client,
+            stats: Mutex::new(None),
         }
     }
 
@@ -105,20 +119,13 @@ impl Miner for Minera {
     }
 
     async fn get_hashrate(&self) -> Result<f64, Error> {
-        let resp = self.client.http_client
-            .get(&format!("http://{}/index.php/app/stats", self.ip))
-            .send()
-            .await?;
-        if resp.status().is_success() {
-            let stat: minera::StatsResp = resp.json().await?;
-            if let minera::StatsResp::Running(stat) = stat {
-                // Convert to TH/S
-                Ok((stat.totals.hashrate as f64) / 1000000000000.0)
-            } else {
-                Ok(0.0)
-            }
+        let stat = self.get_stats().await?;
+        let stat = stat.as_ref().unwrap();
+        if let minera::StatsResp::Running(stat) = stat {
+            // Convert to TH/S
+            Ok((stat.totals.hashrate as f64) / 1000000000000.0)
         } else {
-            Err(Error::HttpRequestFailed)
+            Ok(0.0)
         }
     }
 
@@ -146,61 +153,21 @@ impl Miner for Minera {
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
-        let resp = self.client.http_client
-            .get(&format!("http://{}/index.php/app/stats", self.ip))
-            .send()
-            .await?;
-        if resp.status().is_success() {
-            let stat = resp.json::<minera::StatsResp>().await?;
-            if let minera::StatsResp::Running(stat) = stat {
-                // Convert to TH/S
-                Ok(stat.temp)
-            } else {
-                Ok(0.0)
-            }
+        let stat = self.get_stats().await?;
+        let stat = stat.as_ref().unwrap();
+        if let minera::StatsResp::Running(stat) = stat {
+            // Convert to TH/S
+            Ok(stat.temp)
         } else {
-            Err(Error::HttpRequestFailed)
+            Ok(0.0)
         }
     }
 
     async fn get_fan_speed(&self) -> Result<Vec<u32>, Error> {
-        // let resp = self.client.http_client
-        //     .get(&format!("http://{}/index.php/app/api", self.ip))
-        //     .query(&[("command", "miner_stats")])
-        //     .send()
-        //     .await?;
-        // if resp.status().is_success() {
-        //     println!("{:?}", resp.text().await?);
-        //     Ok(vec![])
-        // } else {
-        //     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Failed to get stats")))
-        // }
-        //TODO: I can get Fan0 Speed but not the others
         Ok(vec![])
     }
 
     async fn get_pools(&self) -> Result<Vec<Pool>, Error> {
-        /*
-        // This implementation doesn't work when the miner is not running
-        let resp = self.client.http_client
-            .get(&format!("http://{}/index.php/app/stats", self.ip))
-            .send()
-            .await?;
-        if resp.status().is_success() {
-            let stat = resp.json::<minera::StatsResp>().await?;
-            if let minera::StatsResp::Running(stat) = stat {
-                Ok(stat.pools.iter().map(|p| Pool {
-                    url: p.url.clone(),
-                    username: p.user.clone(),
-                    password: if p.pass {Some("*****".to_string())} else {None},
-                }).collect())
-            } else {
-                Ok(vec![])
-            }
-        } else {
-            Err(Error::HttpRequestFailed)
-        }
-        */
         // To get pools for miners not running we need to parse raw html .-.
         // We can look for poolSortable as the container, each pool is a new pool-group
         let pools_selector = Selector::parse(".poolSortable").unwrap();
@@ -252,6 +219,7 @@ impl Miner for Minera {
             .send()
             .await?;
         if resp.status().is_success() {
+            self.invalidate_stats().await;
             Ok(())
         } else {
             Err(Error::HttpRequestFailed)
@@ -262,30 +230,8 @@ impl Miner for Minera {
         Err(Error::NotSupported)
     }
 
-    async fn set_sleep(&mut self, sleep: bool) -> Result<(), Error> {
+    async fn set_sleep(&mut self, _sleep: bool) -> Result<(), Error> {
         return Err(Error::NotSupported);
-        let webresp = self.client.http_client
-            .get(&format!("http://{}/index.php/app/save_settings", self.ip))
-            .query(&[("save_config", "1")])
-            .send()
-            .await?;
-        if webresp.status().is_success() {
-            //println!("{:?}", webresp.text().await?);
-        }
-        let resp = self.client.send_recv(&self.ip, self.port, &json!({"command":"asccount"})).await?;
-        let asccount : common::AscIdentifyResp = serde_json::from_str(&resp)?;
-        for i in 0..asccount.ascs[0].count {
-            let resp2 = self.client.send_recv(
-                &self.ip,
-                self.port,
-                &json!({
-                    "command" : if sleep { "ascdisable" } else { "ascenable" },
-                    "parameter" : &i.to_string(),
-                }),
-            ).await?;
-            //println!("{:?}", resp2);
-        }
-        Ok(())
     }
 
     async fn get_blink(&self) -> Result<bool, Error> {
@@ -312,18 +258,11 @@ impl Miner for Minera {
     }
 
     async fn get_mac(&self) -> Result<String, Error> {
-        let resp = self.client.http_client
-            .get(&format!("http://{}/index.php/app/stats", self.ip))
-            .send()
-            .await?;
-        if resp.status().is_success() {
-            let stat = resp.json::<minera::StatsResp>().await?;
-            match stat {
-                minera::StatsResp::Running(stat) => Ok(stat.mac_addr),
-                minera::StatsResp::NotRunning(stat) => Ok(stat.mac_addr),
-            }
-        } else {
-            Err(Error::HttpRequestFailed)
+        let stat = self.get_stats().await?;
+        let stat = stat.as_ref().unwrap();
+        match stat {
+            minera::StatsResp::Running(stat) => Ok(stat.mac_addr.clone()),
+            minera::StatsResp::NotRunning(stat) => Ok(stat.mac_addr.clone()),
         }
     }
 
