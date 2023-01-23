@@ -47,7 +47,7 @@ impl Antminer {
         let mut sys_info = self.sys_info.lock().await;
         if sys_info.is_none() {
             let resp = self.client.http_client
-                .get(&format!("http://{}/cgi-bin/get_sys_info.cgi", self.ip))
+                .get(&format!("http://{}/cgi-bin/get_system_info.cgi", self.ip))
                 .send_with_digest_auth(&self.username, &self.password)
                 .await?;
             if !resp.status().is_success() {
@@ -65,7 +65,7 @@ impl Antminer {
         let mut summary = self.summary.lock().await;
         if summary.is_none() {
             let resp = self.client.http_client
-                .get(&format!("http://{}/cgi-bin/get_system_info.cgi", self.ip))
+                .get(&format!("http://{}/cgi-bin/summary.cgi", self.ip))
                 .send_with_digest_auth(&self.username, &self.password)
                 .await?;
             if !resp.status().is_success() {
