@@ -9,19 +9,20 @@ use phf::phf_map;
 use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi};
 use super::{error::WhatsminerErrors, wmapi::StatusCode};
 
-static EFF_MAP: phf::Map<&'static str, f64> = phf_map! {
-    "M31S" => 46.0,
-    "M31S+" => 42.0,
-    "M30S" => 38.0,
-    "M30S+" => 34.0,
-    "M33S+" => 34.0,
-    "M30S++" => 31.0,
-    "M33S++" => 31.0,
-    "M50" => 29.0,
-    "M53" => 29.0,
-    "M50S" => 26.0,
-    "M53S" => 26.0,
-    "M50S+" => 24.0,
+// (J/TH, Datasheet TH)
+static EFF_MAP: phf::Map<&'static str, (f64, f64)> = phf_map! {
+    "M31S" => (46.0, 72.0),
+    "M31S+" => (42.0, 80.0),
+    "M30S" => (38.0, 88.0),
+    "M30S+" => (34.0, 100.0),
+    "M33S+" => (34.0, 210.0),
+    "M30S++" => (31.0, 108.0),
+    "M33S++" => (31.0, 230.0),
+    "M50" => (29.0, 115.0),
+    "M53" => (29.0, 235.0),
+    "M50S" => (26.0, 125.0),
+    "M53S" => (26.0, 235.0),
+    "M50S+" => (24.0, 138.0),
 };
 
 #[derive(Debug, Deserialize)]
@@ -110,6 +111,7 @@ impl Whatsminer {
         let mut summary = self.summary.lock().await;
         if summary.is_none() {
             let resp = self.send_recv(&json!({"cmd": "summary"})).await?;
+            println!("Summary: {}", resp);
             if let Ok(s) = serde_json::from_str::<wmapi::Status>(&resp) {
                 return Err(Error::ApiCallFailed(s.msg));
             } else {
@@ -210,14 +212,20 @@ impl Miner for Whatsminer {
         }
         // If we're not hashing return the dataspec efficiency
         let model = self.get_model().await?;
-        EFF_MAP.get(model.as_str()).ok_or(Error::UnknownModel(model.to_string())).map(|x| *x)
+        EFF_MAP.get(model.as_str()).ok_or(Error::UnknownModel(model.to_string())).map(|(x, _)| *x)
     }
 
     async fn get_nameplate_rate(&self) -> Result<f64, Error> {
-        let sum = self.get_summary().await?;
-        let sum = sum.as_ref().unwrap_or_else(|| unreachable!());
-
-        Ok(sum.summary[0].factory_ghs as f64 / 1000.0)
+        if let Ok(sum) = self.get_summary().await {
+            let sum = sum.as_ref().unwrap_or_else(|| unreachable!());
+    
+            Ok(sum.summary[0].factory_ghs as f64 / 1000.0)
+        } else {
+            // If we're not hashing return the dataspec efficiency
+            // Cause whatsminer .-.
+            let model = self.get_model().await?;
+            EFF_MAP.get(model.as_str()).ok_or(Error::UnknownModel(model.to_string())).map(|(_, x)| *x)
+        }
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
