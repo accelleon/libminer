@@ -32,7 +32,7 @@ where
 pub struct BtStatus {
     #[serde(deserialize_with = "deserialize_bool")]
     pub btmineroff: bool,
-    #[serde(rename = "Firmware Version")]
+    #[serde(rename = "Firmware Version", alias = "FirmwareVersion")]
     pub firmware_version: String,
 }
 
