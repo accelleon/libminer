@@ -153,7 +153,7 @@ impl Miner for Whatsminer {
                 .await?
                 .text()
                 .await?;
-            let modelre = regex!(r#"<td.+>Model</td>\s*<td>WhatsMiner ([a-zA-Z0-9]+)(?:_V.+)?</td>"#);
+            let modelre = regex!(r#"<td.+>Model</td>\s*<td>WhatsMiner ([a-zA-Z0-9\+]+)(?:_V.+)?</td>"#);
             *model = Some(modelre.captures(&resp)
                 .ok_or(Error::ExpectedReturn)?
                 .get(1)
