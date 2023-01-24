@@ -381,7 +381,6 @@ impl Miner for Minerva {
                 // Convert to TH/s
                 Ok(summary.data[0].mhs_5s / 1000000.0)
             } else if let Ok(status) = serde_json::from_str::<cgminer::ApiResp>(&text) {
-                warn!("Failed to get hashrate {}", if let Some(msg) = status.data { msg } else { "Unknown error".to_string() });
                 // The miners up but didn't give us a great response, so just return 0
                 Ok(0.0)
             } else {
