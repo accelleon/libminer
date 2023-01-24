@@ -148,8 +148,11 @@ impl Miner for Minera {
         // Unless we detect 4 boards in which case assume 90/4 = 22.5 TH/s per board
 
         // Edge case: This will be incorrect for 4 board models with at least 1 board disconnected
-        let boards = self.get_board_count().await?;
-        Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
+        if let Ok(boards) = self.get_board_count().await {
+            Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
+        } else {
+            Ok(90.0)
+        }
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
@@ -303,7 +306,7 @@ impl Minerva {
             .send()
             .await?;
         if resp.status().is_success() {
-            let resp = resp.json::<cgminer::HashBoardsResp>().await?;
+            let resp = resp.json::<cgminer::HashBoardsResp>().await.unwrap();
             let boards = resp.data.ok_or(Error::ApiCallFailed(resp.message))?;
             Ok(boards.len() as u8)
         } else {
@@ -410,8 +413,11 @@ impl Miner for Minerva {
         // Unless we detect 4 boards in which case assume 90/4 = 22.5 TH/s per board
 
         // Edge case: This will be incorrect for 4 board models with at least 1 board disconnected
-        let boards = self.get_board_count().await?;
-        Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
+        if let Ok(boards) = self.get_board_count().await {
+            Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
+        } else {
+            Ok(90.0)
+        }
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
