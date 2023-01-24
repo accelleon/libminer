@@ -111,7 +111,6 @@ impl Whatsminer {
         let mut summary = self.summary.lock().await;
         if summary.is_none() {
             let resp = self.send_recv(&json!({"cmd": "summary"})).await?;
-            println!("Summary: {}", resp);
             if let Ok(s) = serde_json::from_str::<wmapi::Status>(&resp) {
                 return Err(Error::ApiCallFailed(s.msg));
             } else {
