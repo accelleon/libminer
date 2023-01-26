@@ -21,7 +21,7 @@ pub static MineraErrors: [MinerError; 4] = [
     },
 ];
 
-pub static MinerVaErrors: [MinerError; 8] = [
+pub static MinerVaErrors: [MinerError; 9] = [
     MinerError {
         re: regex!(r".+Error: fan ([0-9]) failed"),
         msg: "Fan {} failed",
@@ -53,5 +53,9 @@ pub static MinerVaErrors: [MinerError; 8] = [
     MinerError {
         re: regex!(r".+read eeprom failed:I2C(Nix(ENXIO))"),
         msg: "Failed to read EEPROM, device did not respond",
+    },
+    MinerError {
+        re: regex!(r".+waiting for fan spinning up: rpm: 0"),
+        msg: "Fan not spinning up or sense fail",
     }
 ];
