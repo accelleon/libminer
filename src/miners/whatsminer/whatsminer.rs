@@ -271,6 +271,10 @@ impl Miner for Whatsminer {
     }
 
     async fn get_sleep(&self) -> Result<bool, Error> {
+        // Grrrrrr, cg/btminer isn't always present in the process listing...
+        if self.get_hashrate().await? > 0.0 {
+            return Ok(false);
+        }
         //This doesn't work for miners running cgminer
         let resp = self.send_recv(&json!({"cmd":"status"})).await?;
         if let Ok(btstatus) = serde_json::from_str::<wmapi::BtStatusResp>(&resp) {
