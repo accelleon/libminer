@@ -144,15 +144,7 @@ impl Miner for Minera {
         // Minerva doesn't report a nameplate rate, so we have to guess
         // There are 3 models with hashrates varying from 75 to 105 TH/s
         // Assume the middle of the road 90 TH/s
-        // Most models are 3 board models, so assume 90/3 = 30 TH/s per board
-        // Unless we detect 4 boards in which case assume 90/4 = 22.5 TH/s per board
-
-        // Edge case: This will be incorrect for 4 board models with at least 1 board disconnected
-        if let Ok(boards) = self.get_board_count().await {
-            Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
-        } else {
-            Ok(90.0)
-        }
+        Ok(90.0)
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
@@ -409,15 +401,7 @@ impl Miner for Minerva {
         // Minerva doesn't report a nameplate rate, so we have to guess
         // There are 3 models with hashrates varying from 75 to 105 TH/s
         // Assume the middle of the road 90 TH/s
-        // Most models are 3 board models, so assume 90/3 = 30 TH/s per board
-        // Unless we detect 4 boards in which case assume 90/4 = 22.5 TH/s per board
-
-        // Edge case: This will be incorrect for 4 board models with at least 1 board disconnected
-        if let Ok(boards) = self.get_board_count().await {
-            Ok(boards as f64 * if boards == 4 { 22.5 } else { 30.0 })
-        } else {
-            Ok(90.0)
-        }
+        Ok(90.0)
     }
 
     async fn get_temperature(&self) -> Result<f64, Error> {
