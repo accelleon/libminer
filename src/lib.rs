@@ -331,10 +331,10 @@ impl Client {
         };
         debug!("Detecting miner at {}:{}", ip, port);
         let miner = {
-            if let Ok(miner) = self.socket_detect(ip, port).await {
+            if let Ok(miner) = self.http_detect(ip, port).await {
                 Ok(miner)
             } else {
-                self.http_detect(ip, port).await
+                self.socket_detect(ip, port).await
             }
         }?;
         if let Some(permit) = permit {
