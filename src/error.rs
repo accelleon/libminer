@@ -9,7 +9,7 @@ use crate::miners::avalon::DeError as AvalonDeError;
 #[derive(Error, Debug)]
 pub enum Error {
     // Errors bubbled from dependencies
-    #[error("Reqwest error")]
+    #[error("Reqwest error {0}")]
     RequestError(#[from] ReqwestError),
     #[error("Io error")]
     IoError(#[from] IoError),
