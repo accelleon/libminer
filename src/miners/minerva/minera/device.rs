@@ -8,7 +8,7 @@ pub struct Device {
     pub rejected: usize,
     pub hw_errors: usize,
     pub shares: usize,
-    pub hashrate: usize,
+    pub hashrate: f64,
     pub last_share: usize,
     pub serial: bool,
 }
@@ -33,6 +33,6 @@ pub struct DeviceTotal {
     pub rejected: usize,
     pub hw_errors: usize,
     pub shares: usize,
-    pub hashrate: usize,
+    pub hashrate: f64,
     pub last_share: usize,
 }

@@ -123,7 +123,7 @@ impl Miner for Minera {
         let stat = stat.as_ref().unwrap();
         if let minera::StatsResp::Running(stat) = stat {
             // Convert to TH/S
-            Ok((stat.totals.hashrate as f64) / 1000000000000.0)
+            Ok(stat.totals.hashrate / 1000000000000.0)
         } else {
             Ok(0.0)
         }
