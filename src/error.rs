@@ -11,11 +11,11 @@ pub enum Error {
     // Errors bubbled from dependencies
     #[error("Reqwest error {0}")]
     RequestError(#[from] ReqwestError),
-    #[error("Io error")]
+    #[error("Io error {0}")]
     IoError(#[from] IoError),
-    #[error("Json error")]
+    #[error("Json error {0}")]
     ParseError(#[from] JsonError),
-    #[error("Digest auth error")]
+    #[error("Digest auth error {0}")]
     DigestAuthError(#[from] DigestAuthError),
     #[error("ToStr error")]
     ToStrError(#[from] ToStrError),
