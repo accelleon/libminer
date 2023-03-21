@@ -279,6 +279,15 @@ impl Miner for Minera {
         }
         Ok(errors.into_iter().collect())
     }
+
+    async fn get_dns(&self) -> Result<String, Error> {
+        let stat = self.get_stats().await?;
+        let stat = stat.as_ref().unwrap();
+        match stat {
+            minera::StatsResp::Running(stat) => Ok(stat.ifconfig.dns.clone()),
+            minera::StatsResp::NotRunning(stat) => Ok(stat.ifconfig.dns.clone()),
+        }
+    }
 }
 
 /// 2 fan Minervas use this interface
@@ -601,5 +610,19 @@ impl Miner for Minerva {
             }
         }
         Ok(errors.into_iter().collect())
+    }
+
+    async fn get_dns(&self) -> Result<String, Error> {
+        let resp = self.client.http_client
+            .get(&format!("https://{}/api/v1/systemInfo/network", self.ip))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            let network = resp.json::<cgminer::NetworkResponse>().await?;
+            Ok(network.data.dns.clone())
+        } else {
+            Err(Error::HttpRequestFailed)
+        }
     }
 }

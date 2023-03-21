@@ -252,4 +252,8 @@ impl Miner for Avalon {
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
         Err(Error::NotSupported)
     }
+
+    async fn get_dns(&self) -> Result<String, Error> {
+        Err(Error::NotSupported)
+    }
 }

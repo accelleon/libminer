@@ -88,6 +88,8 @@ pub trait Miner {
     async fn get_mac(&self) -> Result<String, Error>;
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error>;
+
+    async fn get_dns(&self) -> Result<String, Error>;
 }
 
 pub struct LockMiner {
@@ -185,5 +187,9 @@ impl Miner for LockMiner {
 
     async fn get_errors(&mut self) -> Result<Vec<String>, Error> {
         self.miner.get_errors().await
+    }
+
+    async fn get_dns(&self) -> Result<String, Error> {
+        self.miner.get_dns().await
     }
 }

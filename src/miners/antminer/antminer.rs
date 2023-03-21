@@ -353,4 +353,11 @@ impl Miner for Antminer {
         }
         Ok(errors.into_iter().collect())
     }
+
+    async fn get_dns(&self) -> Result<String, Error> {
+        let sys_info = self.sys_info().await?;
+        let sys_info = sys_info.as_ref().unwrap_or_else(|| unreachable!());
+
+        Ok(sys_info.dnsservers.clone())
+    }
 }

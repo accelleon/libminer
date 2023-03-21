@@ -412,4 +412,14 @@ impl Miner for Whatsminer {
         }
         Ok(errors.into_iter().collect())
     }
+
+    async fn get_dns(&self) -> Result<String, Error> {
+        let resp = self.send_recv(&json!({"cmd":"get_miner_info"})).await?;
+        if let Ok(_) = serde_json::from_str::<wmapi::Status>(&resp) {
+            Err(Error::NotSupported)
+        } else {
+            let resp: wmapi::MinerInfoResponse = serde_json::from_str(&resp)?;
+            Ok(resp.msg.dns.clone())
+        }
+    }
 }
