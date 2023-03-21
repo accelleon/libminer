@@ -7,32 +7,49 @@ pub mod error;
 
 use miners::*;
 use error::Error;
-use tokio::{self, net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 use reqwest;
 use serde_json::json;
 use tracing::{debug, instrument};
-pub use tokio::time::Duration;
 use lazy_regex::regex;
 use std::sync::Arc;
-use tokio::sync::Semaphore;
+use std::collections::HashMap;
+use chrono::{DateTime, Utc};
+
+use tokio::{
+    self,
+    net::TcpStream,
+    io::{AsyncWriteExt, AsyncReadExt},
+    sync::{RwLock, Semaphore},
+    time::Duration,
+};
 
 /*
  * Cgminer socket API has a tendency to fail often but is generally universal
  * Failing this, most miners have an API exposed over HTTP, but these are highly specific
  */
 
+#[derive(Debug, Clone)]
+pub struct CacheItem {
+    pub token: String,
+    pub token_expires: DateTime<Utc>,
+}
+
+pub type Cache = Arc<RwLock<HashMap<String, CacheItem>>>;
+
 pub struct ClientBuilder {
     connect_timeout: Duration,
     request_timeout: Duration,
     max_connections: usize,
+    cache_token: bool,
 }
 
 impl ClientBuilder {
     pub fn new () -> Self {
         Self {
-            connect_timeout: Duration::from_secs(5),
-            request_timeout: Duration::from_secs(10),
+            connect_timeout: Duration::from_secs(15),
+            request_timeout: Duration::from_secs(30),
             max_connections: 0,
+            cache_token: false,
         }
     }
 
@@ -54,6 +71,12 @@ impl ClientBuilder {
     /// Default is 0, or unlimited
     pub fn max_connections(mut self, max: usize) -> Self {
         self.max_connections = max;
+        self
+    }
+
+    /// Set whether or not to cache the tokens for the client instance
+    pub fn cache_token(mut self, cache: bool) -> Self {
+        self.cache_token = cache;
         self
     }
 
@@ -79,6 +102,7 @@ impl ClientBuilder {
             connect_timeout: self.connect_timeout,
             request_timeout: self.request_timeout,
             lock,
+            tokens: if self.cache_token { Some(Arc::new(RwLock::new(HashMap::new()))) } else { None },
         })
     }
 }
@@ -89,6 +113,7 @@ pub struct Client {
     connect_timeout: Duration,
     request_timeout: Duration,
     lock: Option<Arc<Semaphore>>,
+    tokens: Option<Cache>,
 }
 
 impl Client {
@@ -291,7 +316,7 @@ impl Client {
                         return Ok(Box::new(minerva::Minera::new(self.clone(), ip.into(), port)));
                     }
                 }
-                
+
                 #[cfg(feature = "whatsminer")]
                 {
                     // Lastly check whatsminers, /cgi-bin/luci and look for whatsminer in the body
@@ -302,7 +327,7 @@ impl Client {
                         if re.is_match(&resp.text().await?) {
                             debug!("Detected Whatsminer at {}:{}", ip, port);
                             //warn!("Socket API did not respond, this miner may not work.");
-                            return Ok(Box::new(whatsminer::Whatsminer::new(self.clone(), ip.to_string(), port)));
+                            return Ok(Box::new(whatsminer::Whatsminer::new(self.clone(), ip.to_string(), port).with_cache(self.tokens.clone())));
                         }
                     }
                 }

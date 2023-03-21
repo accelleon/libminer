@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde::{Serialize, Deserialize};
 use lazy_regex::{Regex, Lazy};
 use crate::error::Error;
-use crate::Client;
+use crate::{Client, Cache};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Pool {
@@ -50,6 +50,11 @@ impl MinerError {
 pub trait Miner {
     fn new(client: Client, ip: String, port: u16) -> Self
         where Self: Sized;
+    
+    fn with_cache(mut self, _cache: Option<Cache>) -> Self
+        where Self: Sized {
+            self
+        }
 
     fn get_type(&self) -> &'static str;
 

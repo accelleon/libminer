@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Sha256, Digest};
 use openssl::symm::{Cipher, Crypter, Mode};
@@ -59,9 +59,10 @@ impl TokenResponse {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct WhatsminerToken {
     token: String,
-    expires: DateTime<Utc>,
+    pub expires: DateTime<Utc>,
     cipher: Vec<u8>,
 }
 

@@ -6,7 +6,7 @@ use lazy_regex::regex;
 use std::collections::HashSet;
 use phf::phf_map;
 
-use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi};
+use crate::{Client, Miner, error::Error, Pool, miners::common, miners::whatsminer::wmapi, Cache, CacheItem};
 use super::{error::WhatsminerErrors, wmapi::StatusCode};
 
 // (J/TH, Datasheet TH)
@@ -50,6 +50,7 @@ pub struct Whatsminer {
     password: Option<String>,
     token: Option<wmapi::WhatsminerToken>,
     client: Client,
+    cache: Option<Cache>,
 
     model: Mutex<Option<String>>,
     summary: Mutex<Option<wmapi::SummaryResp>>,
@@ -84,6 +85,37 @@ impl Whatsminer {
         } else {
             Err(Error::Unauthorized)
         }
+    }
+
+    async fn token_cached(&mut self) -> Result<(), Error> {
+        // If we dont' have a token, check the cache
+        if self.token.is_none() {
+            if let Some(cache) = &self.cache {
+                let cache = cache.read().await;
+                if let Some(token) = cache.get(&self.ip) {
+                    if token.token_expires > chrono::Utc::now() {
+                        self.token = serde_json::from_str(&token.token)?;
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        self.refresh_token().await?;
+
+        if let Some(cache) = &self.cache {
+            let mut cache = cache.write().await;
+            if let Some(token) = &self.token {
+                cache.insert(
+                    self.ip.clone(),
+                    CacheItem {
+                        token: serde_json::to_string(token)?,
+                        token_expires: token.expires,
+                    },
+                );
+            }
+        }
+        return Ok(());
     }
 
     async fn send_recv_enc(&mut self, mut data: serde_json::Value) -> Result<String, Error> {
@@ -135,9 +167,15 @@ impl Miner for Whatsminer {
             password: None,
             token: None,
             client,
+            cache: None,
             summary: Mutex::new(None),
             model: Mutex::new(None),
         }
+    }
+
+    fn with_cache(mut self, cache: Option<Cache>) -> Self {
+        self.cache = cache;
+        self
     }
 
     fn get_type(&self) -> &'static str {
@@ -176,7 +214,7 @@ impl Miner for Whatsminer {
         if r.status() != 200 {
             return Err(Error::Unauthorized);
         }
-        self.refresh_token().await?;
+        self.token_cached().await?;
         Ok(())
     }
 
